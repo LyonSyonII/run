@@ -26,7 +26,7 @@
       "injectTo": ["source.run"]
     }]
   },
-  "dependencies": {
+  "devDependencies": {
     "@vscode/vsce": "^2.22.0",
     "generator-code": "^1.8.2",
     "yo": "^5.0.0"

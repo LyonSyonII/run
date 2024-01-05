@@ -1,23 +1,29 @@
 use std::{ops::Deref, collections::{HashSet, HashMap}};
-mod parser;
 
-fn main() {
+use runner::Command;
+
+mod parser;
+mod runner;
+
+fn main() -> std::io::Result<()> {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
     if args.iter().any(|arg| matches!(arg.as_str(), "-h" | "--help")) {
         println!("run: Runs a script.sh file in the current directory.");
-        return;
+        return Ok(());
     }
     
-    let Ok(runfile) = std::fs::read_to_string("runfile") else { println!("run: runfile not found"); return };
+    let runfile = std::fs::read_to_string("runfile").goodbye("run: runfile not found");
     let runfile = parser::runfile::parse(runfile.deref()).expect("Could not parse runfile");
     
     match args.first().and_then(|c| runfile.commands.get(c.as_str())) {
-        Some((cmdargs, script)) => run_command(args.get(1..).unwrap_or_default(), cmdargs, script),
+        Some(cmd) => cmd.run(args.get(1..).unwrap_or_default())?,
         None => {
-            let (cmdargs, script) = runfile.commands.get("default").goodbye("Could not find default command");
-            run_command(args, cmdargs, script);
+            let cmd = runfile.commands.get("default").goodbye("Could not find default command");
+            cmd.run(args)?;
         },
     }
+    
+    Ok(())
 }
 
 fn run_command<'a>(args: impl AsRef<[String]>, cmdargs: impl AsRef<[&'a str]>, script: &'a str) {
@@ -37,10 +43,8 @@ fn run_command<'a>(args: impl AsRef<[String]>, cmdargs: impl AsRef<[&'a str]>, s
 }
 
 pub struct Runfile<'i> {
-    shebang: Option<&'i str>,
-    commands: HashMap<&'i str, (Vec<&'i str>, &'i str)>
+    commands: HashMap<&'i str, Command<'i>>
 }
-
 
 trait Goodbye<T> {
     fn goodbye(self, msg: impl AsRef<str>) -> T;

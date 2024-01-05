@@ -18,6 +18,7 @@
           nodejs
           rustup
           sccache
+          python311
         ];
         shellHook = ''
           rustup install stable

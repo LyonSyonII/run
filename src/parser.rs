@@ -1,21 +1,19 @@
-use std::collections::HashMap;
-use crate::Runfile;
+use crate::{Runfile, Goodbye, runner::{Command, Language}};
 
 peg::parser! {
     pub grammar runfile() for str {
         rule _ = [' ' | '\t' | '\n' | '\r']+
         rule __ = [' ' | '\t' | '\n' | '\r']*
         
-        rule shebang() -> &'input str = "#!" s:$([^'\n']+) { s }
+        rule language() -> Language = i:ident() { i.parse().goodbye(format!("Unknown language: {i}")) }
         rule ident() -> &'input str = $(['a'..='z' | 'A'..='Z' | '0'..='9' | '_']+)
         rule arguments() -> Vec<&'input str> = "(" v:(ident() ** ",") ","? ")" { v }
         rule body() -> &'input str = $(([^ '{' | '}'] / "{" body() "}")+)
-        rule command() -> (&'input str, (Vec<&'input str>, &'input str)) = "function" _ name:ident() args:arguments() __ "{" script:body() "}" {
-           (name, (args, script))
+        rule command() -> (&'input str, Command<'input>) = __ lang:language() _ "fn" _ name:ident() args:arguments() __ "{" script:body() "}" __ {
+           (name, Command::new(lang, args, script))
         }
-        pub rule parse() -> Runfile<'input> = shebang:shebang()? [' ' | '\t']* "\n"+ __ c:(command()+) {
+        pub rule parse() -> Runfile<'input> = __ c:(command()+) __ {
             Runfile { 
-                shebang, 
                 commands: c.into_iter().collect() 
             } 
         }
