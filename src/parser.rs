@@ -7,7 +7,7 @@ peg::parser! {
     pub grammar runfile() for str {
         rule _ = [' ' | '\t' | '\n' | '\r']+
         rule __ = [' ' | '\t' | '\n' | '\r']*
-
+        
         rule language() -> Language = !"fn" i:ident() { i.parse().goodbye(format!("unknown language '{i}'")) }
         rule ident() -> &'input str = $(['a'..='z' | 'A'..='Z' | '0'..='9' | '_']+)
         rule arguments() -> Vec<&'input str> = "(" v:(ident() ** ",") ","? ")" { v }

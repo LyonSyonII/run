@@ -13,8 +13,8 @@ fn main() -> std::io::Result<()> {
         println!("run: Runs a script.sh file in the current directory.");
         return Ok(());
     }
-
-    let runfile = std::fs::read_to_string("runfile").goodbye("runfile not found");
+    
+    let runfile = get_file();
     let runfile = parser::runfile::parse(runfile.deref()).expect("could not parse runfile");
 
     match args.first().and_then(|c| runfile.commands.get(c.as_str())) {
@@ -29,6 +29,18 @@ fn main() -> std::io::Result<()> {
     }
 
     Ok(())
+}
+
+fn get_file() -> String {
+    let files = ["runfile", "run", "Runfile", "Run"];
+    for file in files {
+        if let Ok(file) = std::fs::read_to_string(file) {
+            return file;
+        } 
+    }
+    eprintln!("run: could not find runfile");
+    eprintln!("run: available files: {files:?}");
+    std::process::exit(1);
 }
 
 pub struct Runfile<'i> {

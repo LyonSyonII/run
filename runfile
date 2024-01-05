@@ -1,21 +1,20 @@
 fn default() {
-    echo "Usage: <COMMAND> <NAME>"
-    echo "Commands: sh, py, js, rs"
+  echo "Usage: <COMMAND> <NAME>"
+  echo "Commands: sh, py, js, rs"
 }
 
 sh fn sh(name) {
-    echo "Hello, $name.sh"
+  echo "Hello, $name.sh"
 }
 
 py fn py(name) {
-    print("Hello, $name.py")
+  print("Hello, $name.py")
 }
 
 js fn js(name) {
-    console.log("Hello, $name.js");
+  console.log("Hello, $name.js");
 }
 
 rs fn rs(name) {
-    println!("Hello, $name.rs");
+  println!("Hello, $name.rs");
 }
-

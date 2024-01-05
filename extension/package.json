@@ -2,6 +2,7 @@
   "name": "runfile",
   "displayName": "Runfile",
   "description": "Syntax highlight for Runfile",
+  "icon": "assets/icon-dark.png",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.85.0"
@@ -12,8 +13,12 @@
   "contributes": {
     "languages": [{
       "id": "run",
-      "aliases": ["Run", "run"],
-      "extensions": ["runfile"],
+      "icon": {
+        "light": "./assets/icon-dark.svg",
+        "dark": "./assets/icon-dark.svg"
+      },
+      "aliases": ["Run", "run", "Runfile", "runfile"],
+      "extensions": ["runfile", "run"],
       "configuration": "./language-configuration.json"
     }],
     "grammars": [{
