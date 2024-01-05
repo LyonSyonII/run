@@ -1,11 +1,11 @@
-use std::{str::FromStr, io::Write};
+use std::{io::Write, str::FromStr};
 
 use crate::Goodbye;
 
 pub struct Command<'i> {
     lang: Language,
     args: Vec<&'i str>,
-    script: &'i str
+    script: &'i str,
 }
 
 impl<'i> Command<'i> {
@@ -27,21 +27,27 @@ impl<'i> Command<'i> {
         }
 
         let mut script = script.lines().filter(|l| !l.trim().is_empty()).peekable();
-        let indent = script.peek().map(|l| l.len() - l.trim_start().len()).unwrap_or(0);
+        let indent = script
+            .peek()
+            .map(|l| l.len() - l.trim_start().len())
+            .unwrap_or(0);
         let script = script.map(|l| &l[indent..]).collect::<Vec<_>>().join("\n");
-
-        println!("{}", script);
 
         let cmd = match self.lang {
             Language::Bash => "bash",
             Language::Rust => "rustc",
             Language::Python => "python",
-            Language::Javascript => "node"
+            Language::Javascript => "node",
         };
 
-        let mut cmd = std::process::Command::new(cmd).stdin(std::process::Stdio::piped()).spawn()?;
-        cmd.stdin.as_mut().goodbye("ERROR: Could not take stdin").write_all(script.as_bytes())?;
-        
+        let mut cmd = std::process::Command::new(cmd)
+            .stdin(std::process::Stdio::piped())
+            .spawn()?;
+        cmd.stdin
+            .as_mut()
+            .goodbye("ERROR: Could not take stdin")
+            .write_all(script.as_bytes())?;
+
         Ok(())
     }
 }
@@ -61,7 +67,7 @@ impl FromStr for Language {
             "rs" | "rust" => Ok(Self::Rust),
             "py" | "python" => Ok(Self::Python),
             "js" | "javascript" => Ok(Self::Javascript),
-            _ => Err(())
+            _ => Err(()),
         }
     }
 }

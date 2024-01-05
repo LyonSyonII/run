@@ -26,7 +26,7 @@
                     "match": "\\$\\w+" 
                 },
                 {
-                    "begin": "rs",
+                    "begin": "rs|rust",
                     "end": "(?<=})",
                     "beginCaptures": {
                         "0": { "name": "entity.name.class.run" }
@@ -37,7 +37,7 @@
                     ]
                 },
                 {
-                    "begin": "js",
+                    "begin": "js|javascript",
                     "end": "(?<=})",
                     "beginCaptures": {
                         "0": { "name": "entity.name.class.run" }
@@ -48,7 +48,7 @@
                     ]
                 },
                 {
-                    "begin": "py",
+                    "begin": "py|python",
                     "end": "(?<=})",
                     "beginCaptures": {
                         "0": { "name": "entity.name.class.run" }
@@ -59,7 +59,7 @@
                     ]
                 },
                 {
-                    "begin": "bash",
+                    "begin": "sh|bash",
                     "end": "(?<=})",
                     "beginCaptures": {
                         "0": { "name": "entity.name.class.run" }

@@ -1,15 +1,15 @@
-bash fn default(name) {
+sh fn sh(name) {
     echo "Hello, $name.sh";
 }
 
-py fn hipy(name) {
+py fn py(name) {
     print("Hello, $name.py")
 }
 
-js fn hijs(name) {
+js fn js(name) {
     console.log("Hello, $name.js");
 }
 
-rs fn hirs(name) {
+rs fn rs(name) {
     println!("Hello, $name.rs");
 }
