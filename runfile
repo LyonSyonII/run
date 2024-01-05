@@ -1,5 +1,10 @@
+fn default() {
+    echo "Usage: <COMMAND> <NAME>"
+    echo "Commands: sh, py, js, rs"
+}
+
 sh fn sh(name) {
-    echo "Hello, $name.sh";
+    echo "Hello, $name.sh"
 }
 
 py fn py(name) {
@@ -13,3 +18,4 @@ js fn js(name) {
 rs fn rs(name) {
     println!("Hello, $name.rs");
 }
+

@@ -32,7 +32,7 @@
                         "0": { "name": "entity.name.class.run" }
                     },
                     "patterns": [
-                        { "include": "#function"},
+                        { "include": "#function" },
                         { "include": "source.rust" }
                     ]
                 },
@@ -43,7 +43,7 @@
                         "0": { "name": "entity.name.class.run" }
                     },
                     "patterns": [
-                        { "include": "#function"},
+                        { "include": "#function" },
                         { "include": "source.js"}
                     ]
                 },
@@ -54,18 +54,18 @@
                         "0": { "name": "entity.name.class.run" }
                     },
                     "patterns": [
-                        { "include": "#function"},
+                        { "include": "#function" },
                         { "include": "source.python" }
                     ]
                 },
                 {
-                    "begin": "sh|bash",
+                    "begin": "(?=fn)|shell|sh|bash",
                     "end": "(?<=})",
                     "beginCaptures": {
                         "0": { "name": "entity.name.class.run" }
                     },
                     "patterns": [
-                        { "include": "#function"},
+                        { "include": "#function" },
                         { "include": "source.shell" }
                     ]
                 }

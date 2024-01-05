@@ -1,5 +1,4 @@
 use std::{collections::HashMap, ops::Deref};
-
 use runner::Command;
 
 mod parser;
@@ -16,7 +15,7 @@ fn main() -> std::io::Result<()> {
     }
 
     let runfile = std::fs::read_to_string("runfile").goodbye("runfile not found");
-    let runfile = parser::runfile::parse(runfile.deref()).goodbye("could not parse runfile");
+    let runfile = parser::runfile::parse(runfile.deref()).expect("could not parse runfile");
 
     match args.first().and_then(|c| runfile.commands.get(c.as_str())) {
         Some(cmd) => cmd.run(args.get(1..).unwrap_or_default())?,
