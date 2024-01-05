@@ -1,0 +1,15 @@
+{
+    "scopeName": "interpolation.run",
+    "injectionSelector": "L:source",
+    "patterns": [
+      {
+        "include": "#interpolation"
+      }
+    ],
+    "repository": {
+      "interpolation": {
+        "name": "meta.interpolation.run",
+        "match": "\\$\\w+"
+      }
+    }
+  }

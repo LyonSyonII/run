@@ -1,0 +1,11 @@
+bash fn default(ls) {
+    echo $hola;
+}
+
+python fn hello(name) {
+    print("Hello, " + $name)
+}
+
+rust fn hello(name) {
+    println!("Hello, {}!", $name)
+}

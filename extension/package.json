@@ -1,0 +1,34 @@
+{
+  "name": "runfile",
+  "displayName": "Runfile",
+  "description": "Syntax highlight for Runfile",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "contributes": {
+    "languages": [{
+      "id": "run",
+      "aliases": ["Run", "run"],
+      "extensions": ["runfile"],
+      "configuration": "./language-configuration.json"
+    }],
+    "grammars": [{
+      "language": "run",
+      "scopeName": "source.run",
+      "path": "./syntaxes/run.tmLanguage.json"
+    }, {
+      "path": "./syntaxes/interpolation.json",
+      "scopeName": "interpolation.run",
+      "injectTo": ["source.run"]
+    }]
+  },
+  "dependencies": {
+    "@vscode/vsce": "^2.22.0",
+    "generator-code": "^1.8.2",
+    "yo": "^5.0.0"
+  }
+}

@@ -1,0 +1,76 @@
+{
+    "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+    "name": "Run",
+    "patterns": [
+        {
+            "include": "#languages"
+        }
+    ],
+    "repository": {
+        "function": {
+            "patterns": [
+                {
+                    "match": "(fn)\\s+(.*)\\(\\s*((\\w+\\s*)*)\\)\\s*",
+                    "captures": {
+                        "1": { "name": "keyword.run" },
+                        "2": { "name": "entity.name.function.run" },
+                        "3": { "name": "variable.parameter.function.run" }
+                    }
+                }
+            ]
+        },
+		"languages": {
+			"patterns": [
+                {
+                    "name": "meta.interpolation.run",
+                    "match": "\\$\\w+" 
+                },
+                {
+                    "begin": "rs",
+                    "end": "(?<=})",
+                    "beginCaptures": {
+                        "0": { "name": "entity.name.class.run" }
+                    },
+                    "patterns": [
+                        { "include": "#function"},
+                        { "include": "source.rust" }
+                    ]
+                },
+                {
+                    "begin": "js",
+                    "end": "(?<=})",
+                    "beginCaptures": {
+                        "0": { "name": "entity.name.class.run" }
+                    },
+                    "patterns": [
+                        { "include": "#function"},
+                        { "include": "source.js"}
+                    ]
+                },
+                {
+                    "begin": "py",
+                    "end": "(?<=})",
+                    "beginCaptures": {
+                        "0": { "name": "entity.name.class.run" }
+                    },
+                    "patterns": [
+                        { "include": "#function"},
+                        { "include": "source.python" }
+                    ]
+                },
+                {
+                    "begin": "bash",
+                    "end": "(?<=})",
+                    "beginCaptures": {
+                        "0": { "name": "entity.name.class.run" }
+                    },
+                    "patterns": [
+                        { "include": "#function"},
+                        { "include": "source.shell" }
+                    ]
+                }
+			]
+		}
+    },
+    "scopeName": "source.run"
+}
