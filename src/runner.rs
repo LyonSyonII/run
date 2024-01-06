@@ -3,6 +3,7 @@ pub use std::format as fmt;
 use std::{io::Write, str::FromStr};
 
 pub struct Command<'i> {
+    pub name: &'i str,
     doc: String,
     lang: Language,
     args: Vec<&'i str>,
@@ -10,8 +11,15 @@ pub struct Command<'i> {
 }
 
 impl<'i> Command<'i> {
-    pub fn new(doc: String, lang: Language, args: Vec<&'i str>, script: &'i str) -> Self {
+    pub fn new(
+        name: &'i str,
+        doc: String,
+        lang: Language,
+        args: Vec<&'i str>,
+        script: &'i str,
+    ) -> Self {
         Self {
+            name,
             doc,
             lang,
             args,
@@ -19,21 +27,37 @@ impl<'i> Command<'i> {
         }
     }
 
+    pub fn doc(&self) -> std::borrow::Cow<str> {
+        if self.doc.is_empty() {
+            let name = self.name;
+            let args = self
+                .args
+                .iter()
+                .map(|a| fmt!("<{}>", a.to_uppercase()))
+                .reduce(|acc, s| fmt!("{acc} {s}"))
+                .unwrap_or_default();
+            if name == "default" {
+                return format!("Usage: run {args}").into();
+            }
+            format!("Usage: run {name} {args}").into()
+        } else {
+            self.doc.as_str().into()
+        }
+    }
+
     pub fn run(&self, name: impl AsRef<str>, args: impl AsRef<[String]>) -> std::io::Result<()> {
         let name = name.as_ref();
         let args = args.as_ref();
         if args.iter().any(|a| matches!(a.as_str(), "--help" | "-h")) {
-            if self.doc.is_empty() {
-                let args = self.args.iter().map(|a| fmt!("<{}>", a.to_uppercase())).reduce(|acc, s| fmt!("{acc} {s}")).unwrap_or_default();
-                println!("Usage: run {name} {args}");
-            } else {
-                println!("{}", self.doc);
-            }
+            println!("{}", self.doc());
             return Ok(());
         }
 
         if args.len() < self.args.len() {
-            eprintln!("run {name}: Expected arguments {:?}, got {:?}", self.args, args);
+            eprintln!(
+                "run {name}: Expected arguments {:?}, got {:?}",
+                self.args, args
+            );
             eprintln!("See `run {name} --help` for more information");
             std::process::exit(1);
         }

@@ -16,7 +16,7 @@ peg::parser! {
         pub rule arguments() -> Vec<&'input str> = "(" v:(ident() ** ",") ","? ")" { v }
         pub rule body() -> &'input str = $(([^ '{' | '}'] / "{" body() "}")*)
         pub rule command() -> (&'input str, Command<'input>) = __ doc:doc() __ lang:(language() / { Language::Bash }) __ "fn" __ name:ident() __ args:arguments() __ "{" script:body() "}" __ {
-           (name, Command::new(doc, lang, args, script))
+           (name, Command::new(name, doc, lang, args, script))
         }
         pub rule parse() -> Runfile<'input> = __ c:command()* __ {
             Runfile {

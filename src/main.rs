@@ -10,16 +10,40 @@ fn main() -> std::io::Result<()> {
     let runfile = parser::parse(runfile.deref()).expect("Could not parse runfile");
 
     let args = std::env::args().skip(1).collect::<Vec<_>>();
+    match args.first() {
+        Some(a) if a == "-c" || a == "--commands" => {
+            println!("Available commands:");
+            let mut commands = runfile.commands.values().collect::<Vec<_>>();
+            commands.sort_by(|a, b| {
+                if a.name == "default" {
+                    std::cmp::Ordering::Less
+                } else {
+                    a.name.cmp(b.name)
+                }
+            });
+            for cmd in commands {
+                let doc = cmd.doc();
+                let mut lines = doc.lines();
+                println!("  {:<10}{}", cmd.name, lines.next().unwrap());
+                for l in lines {
+                    println!("  {:<10}{}", " ", l);
+                }
+                println!()
+            }
+            return Ok(());
+        }
+        _ => {}
+    }
     if args.first().is_some_and(|a| a == "-h" || a == "--help") {
         println!("Runs a runfile in the current directory");
         println!("Possible runfile names: [runfile, run, Runfile, Run]\n");
         println!("Usage: run [COMMAND] [ARGS...]\n");
         println!("Options:");
         println!("  -h, --help\t\tPrints help information");
-        println!("  -c, --commands\t\tPrints available commands in the runfile");
+        println!("  -c, --commands\tPrints available commands in the runfile");
         return Ok(());
     }
-    
+
     match args.first().and_then(|c| runfile.commands.get(c.as_str())) {
         Some(cmd) => cmd.run(args.first().unwrap(), args.get(1..).unwrap_or_default())?,
         None => {
