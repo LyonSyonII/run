@@ -1,10 +1,13 @@
 fn default() {
-  echo "Usage: <COMMAND> <NAME>"
+  echo -e "Hello World in multiple languages\n"
+  echo -e "Usage: <COMMAND> <NAME>\n"
   echo "Commands: sh, py, js, rs"
 }
 
+# Example hello world in bash
+# Usage: sh <NAME>
 sh fn sh(name) {
-  echo "Hello, $name.sh"
+  echo "Hello, $name.sh";
 }
 
 py fn py(name) {

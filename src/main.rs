@@ -1,30 +1,35 @@
-use std::{collections::HashMap, ops::Deref};
 use runner::Command;
+pub use std::format as fmt;
+use std::{collections::HashMap, ops::Deref};
 
 mod parser;
 mod runner;
 
 fn main() -> std::io::Result<()> {
+    let runfile = get_file();
+    let runfile = parser::parse(runfile.deref()).expect("Could not parse runfile");
+
     let args = std::env::args().skip(1).collect::<Vec<_>>();
-    if args
-        .iter()
-        .any(|arg| matches!(arg.as_str(), "-h" | "--help"))
-    {
-        println!("run: Runs a script.sh file in the current directory.");
+    if args.first().is_some_and(|a| a == "-h" || a == "--help") {
+        println!("Runs a runfile in the current directory");
+        println!("Possible runfile names: [runfile, run, Runfile, Run]\n");
+        println!("Usage: run [COMMAND] [ARGS...]\n");
+        println!("Options:");
+        println!("  -h, --help\t\tPrints help information");
+        println!("  -c, --commands\t\tPrints available commands in the runfile");
         return Ok(());
     }
     
-    let runfile = get_file();
-    let runfile = parser::runfile::parse(runfile.deref()).expect("could not parse runfile");
-
     match args.first().and_then(|c| runfile.commands.get(c.as_str())) {
-        Some(cmd) => cmd.run(args.get(1..).unwrap_or_default())?,
+        Some(cmd) => cmd.run(args.first().unwrap(), args.get(1..).unwrap_or_default())?,
         None => {
-            let cmd = runfile.commands.get("default").goodbye(format!(
-                "could not find default command\navailable commands: {:?}",
-                runfile.commands.keys()
-            ));
-            cmd.run(args)?;
+            let cmd = runfile.commands.get("default").byefmt(|| {
+                fmt!(
+                    "Could not find default command\nAvailable commands: {:?}",
+                    runfile.commands.keys()
+                )
+            });
+            cmd.run("default", args)?;
         }
     }
 
@@ -36,10 +41,11 @@ fn get_file() -> String {
     for file in files {
         if let Ok(file) = std::fs::read_to_string(file) {
             return file;
-        } 
+        }
     }
-    eprintln!("run: could not find runfile");
-    eprintln!("run: available files: {files:?}");
+    eprintln!("Could not find runfile");
+    eprintln!("Possible file names: {files:?}");
+    eprintln!("See `run --help` for more information");
     std::process::exit(1);
 }
 
@@ -47,24 +53,47 @@ pub struct Runfile<'i> {
     commands: HashMap<&'i str, Command<'i>>,
 }
 
-trait Goodbye<T> {
-    fn goodbye(self, msg: impl AsRef<str>) -> T;
+trait Goodbye<T>
+where
+    Self: Sized,
+{
+    fn bye(self, msg: impl AsRef<str>) -> T {
+        if let Some(t) = self.check() {
+            return t;
+        }
+        eprintln!("{}", msg.as_ref());
+        std::process::exit(1)
+    }
+
+    fn byefmt<S: AsRef<str>>(self, msg: impl Fn() -> S) -> T {
+        if let Some(t) = self.check() {
+            return t;
+        }
+        eprintln!("{}", msg().as_ref());
+        std::process::exit(1)
+    }
+
+    fn check(self) -> Option<T>;
 }
 
 impl<T> Goodbye<T> for Option<T> {
-    fn goodbye(self, msg: impl AsRef<str>) -> T {
-        self.unwrap_or_else(|| {
-            println!("run: {}", msg.as_ref());
-            std::process::exit(1)
-        })
+    fn check(self) -> Option<T> {
+        self
     }
 }
 
 impl<T, E> Goodbye<T> for Result<T, E> {
-    fn goodbye(self, msg: impl AsRef<str>) -> T {
-        self.unwrap_or_else(|_| {
-            println!("run: {}", msg.as_ref());
-            std::process::exit(1)
-        })
+    fn check(self) -> Option<T> {
+        self.ok()
+    }
+}
+
+impl Goodbye<bool> for bool {
+    fn check(self) -> Option<bool> {
+        if self {
+            Some(self)
+        } else {
+            None
+        }
     }
 }

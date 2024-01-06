@@ -3,10 +3,21 @@
     "name": "Run",
     "patterns": [
         {
+            "include": "#comments"
+        },
+        {
             "include": "#languages"
         }
     ],
     "repository": {
+        "comments": {
+            "patterns": [
+                {
+                    "name": "comment.block.documentation",
+                    "match": "#.*$"
+                }
+            ]
+        },
         "function": {
             "patterns": [
                 {
