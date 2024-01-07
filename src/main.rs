@@ -22,7 +22,7 @@ fn main() -> std::io::Result<()> {
                 }
             });
             for cmd in commands {
-                let doc = cmd.doc();
+                let doc = cmd.get_doc();
                 let mut lines = doc.lines();
                 println!("  {:<10}{}", cmd.name, lines.next().unwrap());
                 for l in lines {

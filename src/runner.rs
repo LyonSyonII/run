@@ -5,6 +5,7 @@ use std::{io::Write, str::FromStr};
 pub struct Command<'i> {
     pub name: &'i str,
     doc: String,
+    usage: String,
     lang: Language,
     args: Vec<&'i str>,
     script: &'i str,
@@ -18,38 +19,50 @@ impl<'i> Command<'i> {
         args: Vec<&'i str>,
         script: &'i str,
     ) -> Self {
+        let usage = Self::usage(name, args.iter().cloned());
+        let doc = Self::doc(doc, &usage);
         Self {
             name,
             doc,
+            usage,
             lang,
             args,
             script,
         }
     }
 
-    pub fn doc(&self) -> std::borrow::Cow<str> {
-        if self.doc.is_empty() {
-            let name = self.name;
-            let args = self
-                .args
-                .iter()
-                .map(|a| fmt!("<{}>", a.to_uppercase()))
-                .reduce(|acc, s| fmt!("{acc} {s}"))
-                .unwrap_or_default();
-            if name == "default" {
-                return format!("Usage: run {args}").into();
-            }
-            format!("Usage: run {name} {args}").into()
+    pub fn usage(name: &str, args: impl IntoIterator<Item = &'i str>) -> String {
+        let args = args
+            .into_iter()
+            .map(|a| fmt!("<{}>", a.to_uppercase()))
+            .reduce(|acc, s| fmt!("{acc} {s}"))
+            .unwrap_or_default();
+        if name == "default" {
+            return fmt!("Usage: run {args}");
+        }
+        fmt!("Usage: run {name} {args}")
+    }
+    
+    pub fn get_doc(&self) -> &str {
+        &self.doc
+    }
+    
+    pub fn doc(doc: String, usage: &str) -> String {
+        let mut lines = doc.lines().collect::<Vec<_>>();
+        let last = lines.last().cloned().unwrap_or_default();
+        if !last.starts_with("Usage:") {
+            lines.push(usage);
+            lines.join("\n")
         } else {
-            self.doc.as_str().into()
+            doc.into()
         }
     }
 
     pub fn run(&self, name: impl AsRef<str>, args: impl AsRef<[String]>) -> std::io::Result<()> {
         let name = name.as_ref();
         let args = args.as_ref();
-        if args.iter().any(|a| matches!(a.as_str(), "--help" | "-h")) {
-            println!("{}", self.doc());
+        if args.iter().any(|a| a == "--help" || a == "-h") {
+            println!("{}", self.doc);
             return Ok(());
         }
 
@@ -77,6 +90,7 @@ impl<'i> Command<'i> {
             script = script.replace(&name, arg);
         }
         script = script.replace("$doc", &self.doc);
+        script = script.replace("$usage", &self.usage);
 
         let cmd = match self.lang {
             Language::Bash => "bash",

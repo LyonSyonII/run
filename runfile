@@ -5,7 +5,7 @@ fn default() {
 }
 
 # Example hello world in bash
-# Usage: sh <NAME>
+# $usage
 sh fn sh(name) {
   echo "Hello, $name.sh";
 }
