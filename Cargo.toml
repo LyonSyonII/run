@@ -11,4 +11,3 @@ path = "src/main.rs"
 
 [dependencies]
 chumsky = { version = "1.0.0-alpha.6", features = ["label"] }
-peg = "0.8.2"
