@@ -32,16 +32,36 @@ use chumsky::{error::Cheap, prelude::*};
 type Error<'i> = extra::Err<Rich<'i, char>>;
 type Parsed<'i, T> = Boxed<'i, 'i, &'i str, T, Error<'i>>;
 
-trait ParserExt<'i> : Parser<'i, &'i str, &'i str, Error<'i>> where Self: Sized {
-    fn expect(self, msg: &'static str) -> chumsky::combinator::MapErr<Self, impl Fn(Rich<'i, char>) -> Rich<'i, char>>  {
+trait ParserExt<'i>: Parser<'i, &'i str, &'i str, Error<'i>>
+where
+    Self: Sized,
+{
+    fn expect(
+        self,
+        msg: &'static str,
+    ) -> chumsky::combinator::MapErr<Self, impl Fn(Rich<'i, char>) -> Rich<'i, char>> {
         let closure = move |e: Rich<'i, char>| Rich::custom(*e.span(), msg);
         self.map_err(closure)
     }
 }
-impl<'i, T> ParserExt<'i> for chumsky::text::Padded<T> where T: Parser<'i, &'i str, &'i str, Error<'i>> {}
+impl<'i, T> ParserExt<'i> for chumsky::text::Padded<T> where
+    T: Parser<'i, &'i str, &'i str, Error<'i>>
+{
+}
 
 fn error<'i>(e: Rich<'i, char>, msg: &'static str) -> Rich<'i, char> {
     Rich::custom(*e.span(), msg)
+}
+
+fn string<'i>() -> Parsed<'i, &'i str> {
+    let escape = just('\\').then_ignore(one_of("\\/\"bfnrt"));
+
+    none_of("\\\"")
+        .or(escape)
+        .repeated()
+        .to_slice()
+        .delimited_by(just('"'), just('"'))
+        .boxed()
 }
 
 fn doc<'i>() -> Parsed<'i, String> {
@@ -78,14 +98,17 @@ fn args<'i>() -> Parsed<'i, Vec<&'i str>> {
         .separated_by(text::whitespace().at_least(1))
         .allow_trailing()
         .collect()
-        .delimited_by(just('(').padded(), just(')').map_err(|e| error(e, "expected ')'")))
+        .delimited_by(
+            just('(').padded(),
+            just(')').map_err(|e| error(e, "expected ')'")),
+        )
         .boxed()
 }
 
 fn body<'i>() -> Parsed<'i, &'i str> {
     // ([^ '{' '}'] / "{" body() "}")*
 
-    let body =  recursive(|body| {
+    let body = recursive(|body| {
         choice((
             none_of("{}").to_slice(),
             just('{').then(body).then(just('}')).to_slice(),
@@ -94,20 +117,21 @@ fn body<'i>() -> Parsed<'i, &'i str> {
         // .lazy()
         .to_slice()
     });
-    
+
     just('{')
-    .ignore_then(body)
-    .then_ignore(just('}'))
-    .map(|b: &str| b.trim())
-    .boxed()
+        .ignore_then(body)
+        .then_ignore(just('}'))
+        .map(|b: &str| b.trim())
+        .boxed()
 }
 
 fn signature<'i>() -> Parsed<'i, (Language, &'i str, Vec<&'i str>)> {
-    language_fn().padded()
-    .then(text::ident().padded().expect("expected command name"))
-    .then(args().padded())
-    .map(|((lang, name), args)| (lang, name, args))
-    .boxed()
+    language_fn()
+        .padded()
+        .then(text::ident().padded().expect("expected command name"))
+        .then(args().padded())
+        .map(|((lang, name), args)| (lang, name, args))
+        .boxed()
 }
 
 fn command<'i>() -> Parsed<'i, (&'i str, Command<'i>)> {
@@ -121,13 +145,59 @@ fn command<'i>() -> Parsed<'i, (&'i str, Command<'i>)> {
         .boxed()
 }
 
-pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
+fn commands<'i>() -> Parsed<'i, HashMap<&'i str, Command<'i>>> {
     command()
         .padded()
         .repeated()
         .collect::<HashMap<&'i str, Command<'i>>>()
-        .map(|commands| Runfile { commands })
         .boxed()
+}
+
+fn include<'i>() -> Parsed<'i, Runfile<'i>> {
+    just("in")
+        .padded()
+        .ignore_then(string())
+        .try_map(|path, span| {
+            // TODO: Remove leak (Use Cow?)
+            let file = std::fs::read_to_string(path).map_err(|e| Rich::custom(span, e))?;
+            let commands = commands().parse(&file).into_result().map_err(|e| {
+                let errors = e
+                    .into_iter()
+                    .map(|e| e.to_string())
+                    .fold(fmt!("include {path} has errors:"), |acc, s| {
+                        fmt!("{acc}\n{s}")
+                    });
+                Rich::custom(span, errors)
+            })?;
+            Ok(Runfile { imported: vec![file], commands })
+        })
+        .boxed()
+}
+
+pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
+    choice((
+        commands().map(|commands| Runfile { commands }),
+        include()
+    ))
+    .padded()
+    .repeated()
+    .collect::<Vec<Runfile<'i>>>()
+    .map(|runfiles| {
+        let mut commands = HashMap::new();
+        for runfile in runfiles {
+            commands.extend(runfile.commands);
+        }
+        Runfile { commands }
+    })
+    .boxed()
+
+    /*     let command = command()
+        .padded()
+        .repeated()
+        .collect::<HashMap<&'i str, Command<'i>>>()
+        .map(|commands| Runfile { commands });
+    let include = include()
+        .padded(); */
 }
 
 #[cfg(test)]
@@ -213,9 +283,13 @@ mod test {
             "po{t{a}}to}",
             "{}{}{}",
         ];
-        
+
         for error in errors {
-            assert!(body().parse(error).has_errors(), "Expected error parsing '{}'", error);
+            assert!(
+                body().parse(error).has_errors(),
+                "Expected error parsing '{}'",
+                error
+            );
         }
     }
 
@@ -223,15 +297,11 @@ mod test {
     fn signature() {
         use super::signature;
         let expected_signature = (Language::Bash, "greet", vec!["name"]);
-        let actual_signature = signature()
-            .parse("sh fn greet(name)",)
-            .unwrap();
+        let actual_signature = signature().parse("sh fn greet(name)").unwrap();
         assert_eq!(actual_signature, expected_signature);
-        
+
         let expected_signature = (Language::Bash, "pata", vec!["name", "age"]);
-        let actual_signature = signature()
-            .parse("fn pata (name age)",)
-            .unwrap();
+        let actual_signature = signature().parse("fn pata (name age)").unwrap();
         assert_eq!(actual_signature, expected_signature);
     }
 
@@ -246,17 +316,32 @@ mod test {
             "echo 'Hello, $name.sh';",
         );
         let actual_command = command()
-            .parse("# Greets the user\nsh fn greet(name) { echo 'Hello, $name.sh'; }",)
+            .parse("# Greets the user\nsh fn greet(name) { echo 'Hello, $name.sh'; }")
             .unwrap();
-        assert_eq!(actual_command, ("greet", expected_command.clone()), "Actual: {:#?}\nExpected: {:#?}", actual_command, expected_command);
+        assert_eq!(
+            actual_command,
+            ("greet", expected_command.clone()),
+            "Actual: {:#?}\nExpected: {:#?}",
+            actual_command,
+            expected_command
+        );
 
         let actual_command = command()
-            .parse(r#"
+            .parse(
+                r#"
                 # Greets the user
                 sh fn greet(name) { 
                     echo 'Hello, $name.sh';
-                }"#).unwrap();
-        assert_eq!(actual_command, ("greet", expected_command.clone()), "Actual: {:#?}\nExpected: {:#?}", actual_command, expected_command);
+                }"#,
+            )
+            .unwrap();
+        assert_eq!(
+            actual_command,
+            ("greet", expected_command.clone()),
+            "Actual: {:#?}\nExpected: {:#?}",
+            actual_command,
+            expected_command
+        );
     }
 
     #[test]
@@ -286,7 +371,8 @@ mod test {
             ]),
         };
         let actual_runfile = super::runfile()
-            .parse(r#"
+            .parse(
+                r#"
             # Greets the user
             sh fn greet(name) { 
                 echo "Hello, $name.sh";
@@ -294,7 +380,13 @@ mod test {
             
             fn pata (name age) {
                 echo "Hello, $name.sh";
-            }"#).unwrap();
-        assert_eq!(actual_runfile, expected_runfile, "\nActual: {:#?}\nExpected: {:#?}", actual_runfile, expected_runfile);
+            }"#,
+            )
+            .unwrap();
+        assert_eq!(
+            actual_runfile, expected_runfile,
+            "\nActual: {:#?}\nExpected: {:#?}",
+            actual_runfile, expected_runfile
+        );
     }
 }

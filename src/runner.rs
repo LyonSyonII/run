@@ -56,7 +56,6 @@ impl<'i> Command<'i> {
         let mut lines = doc.lines().collect::<Vec<_>>();
         let last = lines.last().cloned().unwrap_or_default();
         if !last.starts_with("Usage:") {
-            lines.push("");
             lines.push(usage);
             lines.join("\n")
         } else {

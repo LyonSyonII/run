@@ -4,7 +4,8 @@ fn default() {
   echo "Commands: sh, py, js, rs"
 }
 
-# Example hello world in bash
+# This command has custom documentation
+# The usage is filled in automatically if the last line doesn't start with "Usage:"
 sh fn sh(name) {
   echo "Hello, $name from Bash!";
 }

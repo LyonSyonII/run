@@ -31,11 +31,20 @@ fn main() -> std::io::Result<()> {
                     a.name.cmp(b.name)
                 }
             });
-            let max = commands.iter().map(|c| c.name.len()).max().unwrap_or_default();
+            let max = commands
+                .iter()
+                .map(|c| c.name.len())
+                .max()
+                .unwrap_or_default();
             for cmd in commands {
                 let doc = cmd.doc();
                 let mut lines = doc.lines();
-                println!("    {:max$}   {}", cmd.name, lines.next().unwrap(), max=max);
+                println!(
+                    "    {:max$}   {}",
+                    cmd.name,
+                    lines.next().unwrap(),
+                    max = max
+                );
                 for l in lines {
                     println!("    {:max$}   {}", " ", l);
                 }
@@ -85,6 +94,7 @@ fn get_file() -> String {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Runfile<'i> {
+    imported: Vec<String>,
     commands: HashMap<&'i str, Command<'i>>,
 }
 
