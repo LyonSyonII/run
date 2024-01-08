@@ -80,7 +80,16 @@ fn main() -> std::io::Result<()> {
 }
 
 fn get_file() -> String {
-    let files = ["runfile", "run", "Runfile", "Run", "runfile.run", "run.run", "Runfile.run", "Run.run"];
+    let files = [
+        "runfile",
+        "run",
+        "Runfile",
+        "Run",
+        "runfile.run",
+        "run.run",
+        "Runfile.run",
+        "Run.run",
+    ];
     for file in files {
         if let Ok(file) = std::fs::read_to_string(file) {
             return file;
@@ -95,7 +104,8 @@ fn get_file() -> String {
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Runfile<'i> {
     commands: HashMap<&'i str, Command<'i>>,
-    includes: HashMap<&'i str, Runfile<'i>>
+    subcommands: HashMap<&'i str, Runfile<'i>>,
+    includes: HashMap<&'i str, Runfile<'i>>,
 }
 
 trait Goodbye<T>

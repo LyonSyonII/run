@@ -2,14 +2,14 @@ use crate::{
     runner::{Command, Language},
     Goodbye, Runfile,
 };
+use chumsky::prelude::*;
 use std::collections::HashMap;
 pub use std::format as fmt;
-use chumsky::prelude::*;
 
 type Error<'i> = extra::Err<Rich<'i, char>>;
 type Parsed<'i, T> = Boxed<'i, 'i, &'i str, T, Error<'i>>;
 
-trait ParserExt<'i>: Parser<'i, &'i str, &'i str, Error<'i>>
+trait ParserExt<'i, T>: Parser<'i, &'i str, T, Error<'i>>
 where
     Self: Sized,
 {
@@ -21,8 +21,8 @@ where
         self.map_err(closure)
     }
 }
-impl<'i, T> ParserExt<'i> for chumsky::text::Padded<T> where
-    T: Parser<'i, &'i str, &'i str, Error<'i>>
+impl<'i, P, T> ParserExt<'i, T> for P where
+    P: Parser<'i, &'i str, T, Error<'i>>
 {
 }
 
@@ -42,7 +42,8 @@ fn string<'i>() -> Parsed<'i, &'i str> {
 }
 
 fn doc<'i>() -> Parsed<'i, String> {
-    just("#")
+    text::inline_whitespace() // indentation
+        .ignore_then(just('#'))
         .ignore_then(
             any()
                 .and_is(text::newline().not())
@@ -58,15 +59,13 @@ fn doc<'i>() -> Parsed<'i, String> {
 }
 
 fn language_fn<'i>() -> Parsed<'i, Language> {
-    text::keyword("fn")
+    let cmd = choice((text::keyword("fn"), text::keyword("cmd")));
+
+    cmd.clone()
         .to(Language::Bash)
         .or(text::ident()
             .try_map(|s: &str, span| s.parse::<Language>().map_err(|e| Rich::custom(span, e)))
-            .then_ignore(
-                text::keyword("fn")
-                    .padded()
-                    .map_err(|e| error(e, "expected 'fn'")),
-            ))
+            .then_ignore(cmd.padded().map_err(|e| error(e, "expected 'fn' or 'cmd'"))))
         .boxed()
 }
 
@@ -106,41 +105,36 @@ fn signature<'i>() -> Parsed<'i, (Language, &'i str, Vec<&'i str>)> {
     language_fn()
         .padded()
         .then(text::ident().padded().expect("expected command name"))
-        .then(args().padded())
+        .then(args().padded().expect("expected command args"))
         .map(|((lang, name), args)| (lang, name, args))
         .boxed()
 }
 
 fn command<'i>() -> Parsed<'i, (&'i str, Command<'i>)> {
     doc()
-        .padded()
-        .then(signature())
-        .then(body().padded())
+        .then_ignore(just('\n').not().expect("documentation must be adjacent to a command"))
+        .then(signature().padded().expect("expected command signature"))
+        .then(body().padded().expect("expected command body"))
         .map(|((doc, (lang, name, args)), script)| {
             (name, Command::new(name, doc, lang, args, script))
         })
-        .boxed()
-}
-
-fn commands<'i>() -> Parsed<'i, HashMap<&'i str, Command<'i>>> {
-    command()
         .padded()
-        .repeated()
-        .collect::<HashMap<&'i str, Command<'i>>>()
         .boxed()
 }
 
 fn include<'i>() -> Parsed<'i, (&'i str, Runfile<'i>)> {
-    just("in")
+    text::keyword("in")
         .padded()
-        .ignore_then(string())
+        .ignore_then(string().expect("expected include path"))
         .try_map(|path, span| {
             // TODO: Remove leak (Use Cow?)
-            let file = std::fs::read_to_string(path).map_err(|e| Rich::custom(span, e))?.leak();
+            let file = std::fs::read_to_string(path)
+                .map_err(|e| Rich::custom(span, e))?
+                .leak();
             let runfile = runfile().parse(file).into_result().map_err(|e| {
                 let errors = e
                     .into_iter()
-                    .map(|e| e.to_string())
+                    .map(|e| fmt!("{e:?}"))
                     .fold(fmt!("include {path} has errors:"), |acc, s| {
                         fmt!("{acc}\n{s}")
                     });
@@ -151,33 +145,54 @@ fn include<'i>() -> Parsed<'i, (&'i str, Runfile<'i>)> {
         .boxed()
 }
 
+fn subcommand<'i>(runfile: Parsed<'i, Runfile<'i>>) -> Parsed<'i, (&'i str, Runfile<'i>)> {
+    doc()
+        .padded()
+        .then(text::keyword("sub").expect("expected 'sub'"))
+        .padded()
+        .ignore_then(text::ident().expect("expected subcommand name"))
+        .padded()
+        .then_ignore(just('{').expect("expected '{'"))
+        .then(runfile)
+        .then_ignore(just('}').expect("expected '}'"))
+        .boxed()
+}
+
 pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
     enum Results<'i> {
         Command((&'i str, Command<'i>)),
+        Subcommand((&'i str, Runfile<'i>)),
         Include((&'i str, Runfile<'i>)),
     }
-    
-    choice((
-        command().map(Results::Command),
-        include().map(Results::Include)
-    ))
-    .repeated()
-    .collect::<Vec<Results<'i>>>()
-    .map(|results| {
-        results.into_iter().fold(Runfile::default(), |mut acc, new| {
-            match new {
-                Results::Command((name, cmd)) => {
-                    acc.commands.insert(name, cmd);
-                    acc
-                }
-                Results::Include((path, include)) => {
-                    acc.commands.extend(include.commands.clone());
-                    acc.includes.insert(path, include);
-                    acc
-                }
-            }
+
+    recursive(|runfile| {
+        choice((
+            include().map(Results::Include),
+            subcommand(runfile.boxed()).map(Results::Subcommand),
+            command().map(Results::Command),
+        ))
+        .repeated()
+        .collect::<Vec<Results<'i>>>()
+        .map(|results| {
+            results
+                .into_iter()
+                .fold(Runfile::default(), |mut acc, new| match new {
+                    Results::Command((name, cmd)) => {
+                        acc.commands.insert(name, cmd);
+                        acc
+                    }
+                    Results::Subcommand((name, sub)) => {
+                        acc.subcommands.insert(name, sub);
+                        acc
+                    }
+                    Results::Include((path, include)) => {
+                        acc.commands.extend(include.commands.clone());
+                        acc.includes.insert(path, include);
+                        acc
+                    }
+                })
         })
-        })
+    })
     .boxed()
 
     /*     let command = command()
@@ -306,10 +321,10 @@ mod test {
         );
         let actual_command = command()
             .parse("# Greets the user\nsh fn greet(name) { echo 'Hello, $name.sh'; }")
-            .unwrap();
+            .into_result();
         assert_eq!(
             actual_command,
-            ("greet", expected_command.clone()),
+            Ok(("greet", expected_command.clone())),
             "Actual: {:#?}\nExpected: {:#?}",
             actual_command,
             expected_command
@@ -322,11 +337,10 @@ mod test {
                 sh fn greet(name) { 
                     echo 'Hello, $name.sh';
                 }"#,
-            )
-            .unwrap();
+            ).into_result();
         assert_eq!(
             actual_command,
-            ("greet", expected_command.clone()),
+            Ok(("greet", expected_command.clone())),
             "Actual: {:#?}\nExpected: {:#?}",
             actual_command,
             expected_command
@@ -359,6 +373,7 @@ mod test {
                 ),
             ]),
             includes: Default::default(),
+            subcommands: Default::default(),
         };
         let actual_runfile = super::runfile()
             .parse(
@@ -377,6 +392,41 @@ mod test {
             actual_runfile, expected_runfile,
             "\nActual: {:#?}\nExpected: {:#?}",
             actual_runfile, expected_runfile
+        );
+    }
+
+    #[test]
+    fn subcommand() {
+        let expected = Runfile {
+            commands: HashMap::from_iter([(
+                "greet",
+                Command::new(
+                    "greet",
+                    "Greets the user".into(),
+                    Language::Bash,
+                    vec!["name"],
+                    "echo \"Hello, $name.sh\";",
+                ),
+            )]),
+            includes: Default::default(),
+            subcommands: Default::default(),
+        };
+        let actual = super::subcommand(super::runfile())
+            .parse(
+                r#"
+            sub subcommand {
+                # Greets the user
+                sh fn greet(name) { 
+                    echo "Hello, $name.sh";
+                }
+            }"#,
+            )
+            .unwrap();
+        let expected = ("subcommand", expected);
+        assert_eq!(
+            actual, expected,
+            "\nActual: {:#?}\nExpected: {:#?}",
+            actual, expected
         );
     }
 }

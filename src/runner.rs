@@ -129,7 +129,7 @@ impl FromStr for Language {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "fn" | "sh" | "bash" | "shell" => Ok(Self::Bash),
+            "cmd" | "fn" | "sh" | "bash" | "shell" => Ok(Self::Bash),
             "rs" | "rust" => Ok(Self::Rust),
             "py" | "python" => Ok(Self::Python),
             "js" | "javascript" => Ok(Self::Javascript),
