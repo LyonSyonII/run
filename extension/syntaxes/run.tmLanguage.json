@@ -3,18 +3,47 @@
     "name": "Run",
     "patterns": [
         {
+            "include": "#string"
+        },
+        {
             "include": "#comments"
+        },
+        {
+            "include": "#include"
         },
         {
             "include": "#languages"
         }
     ],
     "repository": {
+        "string": {
+            "patterns": [
+                {
+                    "name": "string.quoted.double.run",
+                    "begin": "\"",
+                    "end": "\"",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.run",
+                            "match": "\\\\."
+                        }
+                    ]
+                }
+            ]
+        },
         "comments": {
             "patterns": [
                 {
                     "name": "comment.block.documentation",
                     "match": "#.*$"
+                }
+            ]
+        },
+        "include": {
+            "patterns": [
+                {
+                    "name": "keyword.include.run",
+                    "match": "\\bin\\b"
                 }
             ]
         },

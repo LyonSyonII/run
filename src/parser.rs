@@ -2,32 +2,9 @@ use crate::{
     runner::{Command, Language},
     Goodbye, Runfile,
 };
-pub use runfile::parse;
 use std::collections::HashMap;
 pub use std::format as fmt;
-
-peg::parser! {
-    pub grammar runfile() for str {
-        rule _ = [' ' | '\t' | '\n' | '\r']+
-        rule __ = [' ' | '\t' | '\n' | '\r']*
-        pub rule doc() -> String = c:(("#" c:$([^'\n']*){ c.trim() }) ** "\n") { c.join("\n") }
-
-        pub rule language() -> Language = !"fn" i:ident() { i.parse().byefmt(|| fmt!("Unknown language '{i}'")) }
-        pub rule ident() -> &'input str = $(['a'..='z' | 'A'..='Z' | '0'..='9' | '_']+)
-        pub rule arguments() -> Vec<&'input str> = "(" v:(ident() ** " ") " "? ")" { v }
-        pub rule body() -> &'input str = $(([^ '{' | '}'] / "{" body() "}")*)
-        pub rule command() -> (&'input str, Command<'input>) = __ doc:doc() __ lang:(language() / { Language::Bash }) __ "fn" __ name:ident() __ args:arguments() __ "{" script:body() "}" __ {
-           (name, Command::new(name, doc, lang, args, script))
-        }
-        pub rule parse() -> Runfile<'input> = __ c:command()* __ {
-            Runfile {
-                commands: c.into_iter().collect()
-            }
-        }
-    }
-}
-
-use chumsky::{error::Cheap, prelude::*};
+use chumsky::prelude::*;
 
 type Error<'i> = extra::Err<Rich<'i, char>>;
 type Parsed<'i, T> = Boxed<'i, 'i, &'i str, T, Error<'i>>;
@@ -153,14 +130,14 @@ fn commands<'i>() -> Parsed<'i, HashMap<&'i str, Command<'i>>> {
         .boxed()
 }
 
-fn include<'i>() -> Parsed<'i, Runfile<'i>> {
+fn include<'i>() -> Parsed<'i, (&'i str, Runfile<'i>)> {
     just("in")
         .padded()
         .ignore_then(string())
         .try_map(|path, span| {
             // TODO: Remove leak (Use Cow?)
-            let file = std::fs::read_to_string(path).map_err(|e| Rich::custom(span, e))?;
-            let commands = commands().parse(&file).into_result().map_err(|e| {
+            let file = std::fs::read_to_string(path).map_err(|e| Rich::custom(span, e))?.leak();
+            let runfile = runfile().parse(file).into_result().map_err(|e| {
                 let errors = e
                     .into_iter()
                     .map(|e| e.to_string())
@@ -169,26 +146,38 @@ fn include<'i>() -> Parsed<'i, Runfile<'i>> {
                     });
                 Rich::custom(span, errors)
             })?;
-            Ok(Runfile { imported: vec![file], commands })
+            Ok((path, runfile))
         })
         .boxed()
 }
 
 pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
+    enum Results<'i> {
+        Command((&'i str, Command<'i>)),
+        Include((&'i str, Runfile<'i>)),
+    }
+    
     choice((
-        commands().map(|commands| Runfile { commands }),
-        include()
+        command().map(Results::Command),
+        include().map(Results::Include)
     ))
-    .padded()
     .repeated()
-    .collect::<Vec<Runfile<'i>>>()
-    .map(|runfiles| {
-        let mut commands = HashMap::new();
-        for runfile in runfiles {
-            commands.extend(runfile.commands);
-        }
-        Runfile { commands }
-    })
+    .collect::<Vec<Results<'i>>>()
+    .map(|results| {
+        results.into_iter().fold(Runfile::default(), |mut acc, new| {
+            match new {
+                Results::Command((name, cmd)) => {
+                    acc.commands.insert(name, cmd);
+                    acc
+                }
+                Results::Include((path, include)) => {
+                    acc.commands.extend(include.commands.clone());
+                    acc.includes.insert(path, include);
+                    acc
+                }
+            }
+        })
+        })
     .boxed()
 
     /*     let command = command()
@@ -369,6 +358,7 @@ mod test {
                     ),
                 ),
             ]),
+            includes: Default::default(),
         };
         let actual_runfile = super::runfile()
             .parse(
