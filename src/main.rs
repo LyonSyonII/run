@@ -1,3 +1,4 @@
+use chumsky::Parser as _;
 use runner::Command;
 pub use std::format as fmt;
 use std::{collections::HashMap, ops::Deref};
@@ -7,7 +8,16 @@ mod runner;
 
 fn main() -> std::io::Result<()> {
     let runfile = get_file();
-    let runfile = parser::parse(runfile.deref()).expect("Could not parse runfile");
+    // let runfile = parser::parse(runfile.deref()).expect("Could not parse runfile");
+    let runfile = match parser::runfile().parse(&runfile).into_result() {
+        Ok(r) => r,
+        Err(errors) => {
+            for e in errors {
+                eprintln!("{e:?}");
+            }
+            std::process::exit(1);
+        }
+    };
 
     let args = std::env::args().skip(1).collect::<Vec<_>>();
     match args.first() {
@@ -21,14 +31,14 @@ fn main() -> std::io::Result<()> {
                     a.name.cmp(b.name)
                 }
             });
+            let max = commands.iter().map(|c| c.name.len()).max().unwrap_or_default();
             for cmd in commands {
-                let doc = cmd.get_doc();
+                let doc = cmd.doc();
                 let mut lines = doc.lines();
-                println!("  {:<10}{}", cmd.name, lines.next().unwrap());
+                println!("    {:max$}   {}", cmd.name, lines.next().unwrap(), max=max);
                 for l in lines {
-                    println!("  {:<10}{}", " ", l);
+                    println!("    {:max$}   {}", " ", l);
                 }
-                println!()
             }
             return Ok(());
         }
@@ -73,6 +83,7 @@ fn get_file() -> String {
     std::process::exit(1);
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Runfile<'i> {
     commands: HashMap<&'i str, Command<'i>>,
 }

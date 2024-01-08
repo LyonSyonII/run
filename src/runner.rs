@@ -2,6 +2,7 @@ use crate::Goodbye;
 pub use std::format as fmt;
 use std::{io::Write, str::FromStr};
 
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Command<'i> {
     pub name: &'i str,
     doc: String,
@@ -19,8 +20,8 @@ impl<'i> Command<'i> {
         args: Vec<&'i str>,
         script: &'i str,
     ) -> Self {
-        let usage = Self::usage(name, args.iter().cloned());
-        let doc = Self::doc(doc, &usage);
+        let usage = Self::mkusage(name, args.iter().cloned());
+        let doc = Self::mkdoc(doc, &usage);
         Self {
             name,
             doc,
@@ -31,7 +32,11 @@ impl<'i> Command<'i> {
         }
     }
 
-    pub fn usage(name: &str, args: impl IntoIterator<Item = &'i str>) -> String {
+    pub fn usage(&self) -> &str {
+        &self.usage
+    }
+
+    fn mkusage(name: &str, args: impl IntoIterator<Item = &'i str>) -> String {
         let args = args
             .into_iter()
             .map(|a| fmt!("<{}>", a.to_uppercase()))
@@ -42,19 +47,20 @@ impl<'i> Command<'i> {
         }
         fmt!("Usage: run {name} {args}")
     }
-    
-    pub fn get_doc(&self) -> &str {
+
+    pub fn doc(&self) -> &str {
         &self.doc
     }
-    
-    pub fn doc(doc: String, usage: &str) -> String {
+
+    fn mkdoc(doc: String, usage: &str) -> String {
         let mut lines = doc.lines().collect::<Vec<_>>();
         let last = lines.last().cloned().unwrap_or_default();
         if !last.starts_with("Usage:") {
+            lines.push("");
             lines.push(usage);
             lines.join("\n")
         } else {
-            doc.into()
+            doc
         }
     }
 
@@ -112,6 +118,7 @@ impl<'i> Command<'i> {
     }
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Language {
     Bash,
     Rust,
@@ -120,14 +127,14 @@ pub enum Language {
 }
 
 impl FromStr for Language {
-    type Err = ();
+    type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "fn" | "sh" | "bash" | "shell" => Ok(Self::Bash),
             "rs" | "rust" => Ok(Self::Rust),
             "py" | "python" => Ok(Self::Python),
             "js" | "javascript" => Ok(Self::Javascript),
-            _ => Err(()),
+            _ => Err(fmt!("Unknown language '{s}'; expected one of [fn, sh, bash, shell, rs, rust, py, python, js, javascript]")),
         }
     }
 }

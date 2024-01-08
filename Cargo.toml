@@ -6,4 +6,5 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+chumsky = { version = "1.0.0-alpha.6", features = ["label"] }
 peg = "0.8.2"

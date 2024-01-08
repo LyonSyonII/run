@@ -5,19 +5,26 @@ fn default() {
 }
 
 # Example hello world in bash
-# $usage
 sh fn sh(name) {
-  echo "Hello, $name.sh";
+  echo "Hello, $name from Bash!";
 }
 
-py fn py(name) {
-  print("Hello, $name.py")
+py fn py (name) {
+  print("Hello, $name from Python!")
 }
 
 js fn js(name) {
-  console.log("Hello, $name.js");
+  // You can write any code, even functions
+  function greet() {
+    console.log("Hello, $name from Javascript!");
+  }
+  greet();
 }
 
 rs fn rs(name) {
-  println!("Hello, $name.rs");
+  println!("Hello, $name from Rust!");
+}
+
+fn multiple_args(name age) {
+  echo "Hello, $name. You are $age years old."
 }
