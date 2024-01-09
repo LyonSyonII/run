@@ -63,10 +63,10 @@ impl<'i> Command<'i> {
             doc
         }
     }
-
+    
+    #[momo::momo]
     pub fn run(&self, args: impl AsRef<[String]>) -> std::io::Result<()> {
         let name = self.name;
-        let args = args.as_ref();
         if args.iter().any(|a| a == "--help" || a == "-h") {
             println!("{}", self.doc);
             return Ok(());
