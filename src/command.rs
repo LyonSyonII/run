@@ -1,6 +1,9 @@
 pub use std::format as fmt;
 use std::{io::Write, str::FromStr};
 
+use ariadne::Color;
+use colored::Colorize as _;
+
 use crate::{strlist::StrList, utils::Goodbye};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -30,17 +33,20 @@ impl<'i> Command<'i> {
     }
 
     pub fn usage(&self, parents: &StrList) -> String {
-        let name = self.name;
+        let usage = "Usage:".bold();
+        let parents = parents.as_slice().to_string().cyan().bold();
+        let name = self.name.cyan().bold();
         let args = self
             .args
             .iter()
             .map(|a| fmt!("<{}>", a.to_uppercase()))
             .reduce(|acc, s| fmt!("{acc} {s}"))
-            .unwrap_or_default();
-        if name == "default" {
+            .unwrap_or_default()
+            .cyan();
+        if name.contains("default") {
             return fmt!("Usage: {parents} {args}");
         }
-        fmt!("Usage: {parents} {name} {args}")
+        fmt!("{usage} {parents} {name} {args}")
     }
 
     pub fn doc(&self, parents: &StrList) -> std::borrow::Cow<'_, str> {

@@ -1,10 +1,12 @@
-use std::borrow::Cow;
 use std::collections::HashMap;
 use std::format as f;
 
+use ariadne::{Color, Fmt as _};
+use colored::Colorize;
+
 use crate::command::Command;
 use crate::strlist::StrList;
-use crate::utils::{Goodbye as _, OptionExt};
+use crate::utils::OptionExt;
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Runfile<'i> {
@@ -26,16 +28,22 @@ impl<'i> Runfile<'i> {
 
     #[momo::momo]
     pub fn doc(&self, name: impl AsRef<str>, parents: &StrList) -> std::borrow::Cow<'_, str> {
-        let (parents, name) = if name.is_empty() {
-            (parents.except_last(), parents.last().as_ref())
+        let (parents, name, usage) = if name.is_empty() {
+            // Main
+            (
+                parents.except_last().to_string().cyan().bold(),
+                parents.last_slice().to_string().cyan().bold(),
+                "Usage:".green().bold().to_string(),
+            )
         } else {
-            (parents.as_slice(), name)
+            // Subcommand
+            (parents.as_slice().to_string().cyan().bold(), name.cyan().bold(), "Usage:".bold().to_string())
         };
-
+        
         let mut lines = self.doc.lines().collect::<Vec<_>>();
         let last = lines.last().cloned().unwrap_or_default();
         if !last.starts_with("Usage:") {
-            let usage = f!("Usage: {parents} {name} [COMMAND] [ARGS...]\n");
+            let usage = f!("{usage} {parents} {name} {}\n", "[COMMAND] [ARGS...]".cyan());
             lines.push(&usage);
             lines.join("\n").into()
         } else {
@@ -44,7 +52,7 @@ impl<'i> Runfile<'i> {
     }
 
     fn print_commands(&self, parents: &StrList, indent: usize) {
-        println!("Commands:");
+        eprintln!("{}", "Commands:".green().bold());
         let mut commands = self.commands.values().collect::<Vec<_>>();
         commands.sort_by(|a, b| {
             if a.name == "default" {
@@ -56,9 +64,10 @@ impl<'i> Runfile<'i> {
         for cmd in commands {
             let doc = cmd.doc(parents);
             let mut lines = doc.lines();
-            println!("    {:indent$}   {}", cmd.name, lines.next().unwrap(),);
+            let name = f!("{:indent$}", cmd.name);
+            eprintln!("    {}   {}", name.cyan().bold(), lines.next().unwrap(),);
             for l in lines {
-                println!("    {:indent$}   {}", " ", l);
+                eprintln!("    {:indent$}   {}", " ", l);
             }
         }
     }
@@ -68,20 +77,27 @@ impl<'i> Runfile<'i> {
             return;
         }
 
-        println!("Subcommands:");
+        eprintln!("{}", "Subcommands:".green().bold());
         let mut subcommands = self.subcommands.iter().collect::<Vec<_>>();
         subcommands.sort_unstable_by(|(n1, _), (n2, _)| n1.cmp(n2));
         for (name, sub) in subcommands {
             let doc = sub.doc(name, parents);
             let mut lines = doc.lines();
-            println!("    {:indent$}   {}", name, lines.next().unwrap(),);
+            let name = f!("{:indent$}", name);
+            eprintln!("    {}   {}", name.cyan().bold(), lines.next().unwrap(),);
             for l in lines {
-                println!("    {:indent$}   {}", " ", l);
+                eprintln!("    {:indent$}   {}", " ", l);
             }
         }
     }
 
-    fn print_help(&self) {}
+    fn print_help(&self, msg: impl std::fmt::Display, parents: &StrList) {
+        let indent = self.calculate_indent();
+        eprintln!("{}", msg);
+        eprintln!("{}", self.doc("", parents));
+        self.print_commands(parents, indent);
+        self.print_subcommands(parents, indent);
+    }
 
     #[momo::momo]
     pub fn run<'a>(
@@ -92,12 +108,12 @@ impl<'i> Runfile<'i> {
         let first = args.first();
 
         if first.is_some_and_oneof(["-h", "--help"]) {
-            println!("Runs a runfile in the current directory");
-            println!("Possible runfile names: [runfile, run, Runfile, Run]\n");
-            println!("Usage: run [COMMAND] [ARGS...]\n");
-            println!("Options:");
-            println!("  -h, --help\t\tPrints help information");
-            println!("  -c, --commands\tPrints available commands in the runfile");
+            eprintln!("Runs a runfile in the current directory");
+            eprintln!("Possible runfile names: [runfile, run, Runfile, Run]\n");
+            eprintln!("Usage: run [COMMAND] [ARGS...]\n");
+            eprintln!("Options:");
+            eprintln!("  -h, --help\t\tPrints help information");
+            eprintln!("  -c, --commands\tPrints available commands in the runfile");
             return Ok(());
         } else if first.is_some_and_oneof(["-c", "--commands"]) {
             let indent = self.calculate_indent();
@@ -108,11 +124,10 @@ impl<'i> Runfile<'i> {
 
         let Some(first) = first.map(String::as_str) else {
             let Some(cmd) = self.commands.get("default") else {
-                let indent = self.calculate_indent();
-                println!("ERROR: No command specified and no default command found\n");
-                println!("{}", self.doc("", &parents));
-                self.print_commands(&parents, indent);
-                self.print_subcommands(&parents, indent);
+                self.print_help(
+                    "ERROR: No command specified and no default command found".fg(Color::Red),
+                    &parents,
+                );
                 return Ok(());
             };
             return cmd
@@ -126,7 +141,11 @@ impl<'i> Runfile<'i> {
         } else if let Some(sub) = self.subcommands.get(first) {
             sub.run(parents.append(first), args.get(1..).unwrap_or_default())
         } else {
-            Err(f!("Could not find command or subcommand: {}", first).into())
+            self.print_help(
+                f!("ERROR: Could not find command or subcommand: {}", first).fg(Color::Red),
+                &parents,
+            );
+            std::process::exit(1);
         }
     }
 }

@@ -1,3 +1,6 @@
+use ariadne::{Color, Fmt as _};
+use colored::Colorize;
+
 pub struct StrList<'a> {
     elements: Vec<std::borrow::Cow<'a, str>>,
     separator: std::borrow::Cow<'a, str>,
@@ -15,7 +18,7 @@ impl<'a> StrList<'a> {
             separator: separator.into(),
         }
     }
-
+    
     pub fn append(mut self, s: impl Into<std::borrow::Cow<'a, str>>) -> Self {
         self.elements.push(s.into());
         self
@@ -42,7 +45,7 @@ impl<'a> StrList<'a> {
             separator: &self.separator,
         }
     }
-
+    
     pub fn as_slice(&'a self) -> StrListSlice<'a> {
         StrListSlice {
             elements: &self.elements,
@@ -51,16 +54,13 @@ impl<'a> StrList<'a> {
     }
 }
 
+impl<'a> StrListSlice<'a> {
+
+}
+
 impl<'a> std::fmt::Display for StrList<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut iter = self.elements.iter();
-        if let Some(first) = iter.next() {
-            write!(f, "{}", first)?;
-            for s in iter {
-                write!(f, "{}{}", self.separator, s)?;
-            }
-        }
-        Ok(())
+        write!(f, "{}", self.as_slice())
     }
 }
 
