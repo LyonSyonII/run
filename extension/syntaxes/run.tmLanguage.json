@@ -12,7 +12,7 @@
             "include": "#comments"
         },
         {
-            "include": "#include"
+            "include": "#subcommand"
         },
         {
             "include": "#languages"
@@ -23,16 +23,20 @@
         "keywords": {
             "patterns": [
                 {
-                    "name": "keyword.fn.run",
+                    "name": "keyword.function.run",
                     "match": "\\b(fn)\\b"
                 },
                 {
-                    "name": "keyword.cmd.run",
+                    "name": "keyword.command.run",
                     "match": "\\b(cmd)\\b"
                 },
                 {
                     "name": "keyword.include.run",
                     "match": "\\b(in)\\b"
+                },
+                {
+                    "name": "keyword.subcommand.run",
+                    "match": "\\b(sub)\\b"
                 }
             ]
         },
@@ -59,14 +63,6 @@
                 }
             ]
         },
-        "include": {
-            "patterns": [
-                {
-                    "name": "keyword.include.run",
-                    "match": "\\bin\\b"
-                }
-            ]
-        },
         "function": {
             "patterns": [
                 {
@@ -78,6 +74,33 @@
                         "1": { "name": "entity.name.function.run" },
                         "2": { "name": "variable.parameter.function.run" }
                     }
+                }
+            ]
+        },
+        "subcommand": {
+            "patterns": [
+                {
+                    "match": "(?<=sub)\\s+(.*)\\s*",
+                    "captures": {
+                        "1": { "name": "entity.name.function.run" }
+                    },
+                    "patterns": [
+                        {
+                            "include": "#keywords"
+                        },
+                        {
+                            "include": "#string"
+                        },
+                        {
+                            "include": "#comments"
+                        },
+                        {
+                            "include": "#subcommand"
+                        },
+                        {
+                            "include": "#languages"
+                        }
+                    ]
                 }
             ]
         },

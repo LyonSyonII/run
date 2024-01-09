@@ -27,6 +27,7 @@ fn args(name age) {
   echo "Hello, $name. You are $age years old."
 }
 
+# This subcommand has custom documentation
 sub sub {
   # This is a subcommand
   fn hello() {
