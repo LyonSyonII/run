@@ -1,13 +1,12 @@
 pub use std::format as fmt;
 use std::{io::Write, str::FromStr};
 
-use crate::utils::Goodbye;
+use crate::{strlist::StrList, utils::Goodbye};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Command<'i> {
     pub name: &'i str,
     doc: String,
-    usage: String,
     lang: Language,
     args: Vec<&'i str>,
     script: &'i str,
@@ -21,51 +20,43 @@ impl<'i> Command<'i> {
         args: Vec<&'i str>,
         script: &'i str,
     ) -> Self {
-        let usage = Self::mkusage(name, args.iter().cloned());
-        let doc = Self::mkdoc(doc, &usage);
         Self {
             name,
             doc,
-            usage,
             lang,
             args,
             script,
         }
     }
 
-    pub fn usage(&self) -> &str {
-        &self.usage
-    }
-
-    fn mkusage(name: &str, args: impl IntoIterator<Item = &'i str>) -> String {
-        let args = args
-            .into_iter()
+    pub fn usage(&self, parents: &StrList) -> String {
+        let name = self.name;
+        let args = self
+            .args
+            .iter()
             .map(|a| fmt!("<{}>", a.to_uppercase()))
             .reduce(|acc, s| fmt!("{acc} {s}"))
             .unwrap_or_default();
         if name == "default" {
-            return fmt!("Usage: run {args}");
+            return fmt!("Usage: {parents} {args}");
         }
-        fmt!("Usage: run {name} {args}")
-    }
-
-    pub fn doc(&self) -> &str {
-        &self.doc
-    }
-
-    fn mkdoc(doc: String, usage: &str) -> String {
-        let mut lines = doc.lines().collect::<Vec<_>>();
-        let last = lines.last().cloned().unwrap_or_default();
-        if !last.starts_with("Usage:") {
-            lines.push(usage);
-            lines.join("\n")
-        } else {
-            doc
-        }
+        fmt!("Usage: {parents} {name} {args}")
     }
     
+    pub fn doc(&self, parents: &StrList) -> std::borrow::Cow<'_, str> {
+        let mut lines = self.doc.lines().collect::<Vec<_>>();
+        let last = lines.last().cloned().unwrap_or_default();
+        if !last.starts_with("Usage:") {
+            let usage = self.usage(parents);
+            lines.push(&usage);
+            lines.join("\n").into()
+        } else {
+            std::borrow::Cow::Borrowed(&self.doc)
+        }
+    }
+
     #[momo::momo]
-    pub fn run(&self, args: impl AsRef<[String]>) -> std::io::Result<()> {
+    pub fn run(&self, parents: &StrList, args: impl AsRef<[String]>) -> std::io::Result<()> {
         let name = self.name;
         if args.iter().any(|a| a == "--help" || a == "-h") {
             println!("{}", self.doc);
@@ -95,8 +86,8 @@ impl<'i> Command<'i> {
             let name = fmt!("${name}");
             script = script.replace(&name, arg);
         }
-        script = script.replace("$doc", &self.doc);
-        script = script.replace("$usage", &self.usage);
+        script = script.replace("$doc", &self.doc(parents));
+        script = script.replace("$usage", &self.usage(parents));
 
         let cmd = match self.lang {
             Language::Bash => "bash",

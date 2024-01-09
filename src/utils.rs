@@ -4,11 +4,12 @@ where
 {
     /// Unwraps the contained value.<br>
     /// If unwrapping fails, prints `msg` and exits with code 1.
+    #[momo::momo]
     fn bye(self, msg: impl AsRef<str>) -> T {
         if let Some(t) = self.check() {
             return t;
         }
-        eprintln!("{}", msg.as_ref());
+        eprintln!("{}", msg);
         std::process::exit(1)
     }
 

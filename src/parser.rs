@@ -3,7 +3,6 @@ use crate::{
     runfile::Runfile,
 };
 use chumsky::prelude::*;
-use std::collections::HashMap;
 pub use std::format as fmt;
 
 type Error<'i> = extra::Err<Rich<'i, char>>;
@@ -181,14 +180,6 @@ pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
         })
     })
     .boxed()
-
-    /*     let command = command()
-        .padded()
-        .repeated()
-        .collect::<HashMap<&'i str, Command<'i>>>()
-        .map(|commands| Runfile { commands });
-    let include = include()
-        .padded(); */
 }
 
 trait ParserExt<'i, T>: Parser<'i, &'i str, T, Error<'i>>
@@ -373,8 +364,7 @@ mod test {
                     ),
                 ),
             ]),
-            includes: Default::default(),
-            subcommands: Default::default(),
+            ..Default::default()
         };
         let actual_runfile = super::runfile()
             .parse(
@@ -409,8 +399,7 @@ mod test {
                     "echo \"Hello, $name.sh\";",
                 ),
             )]),
-            includes: Default::default(),
-            subcommands: Default::default(),
+            ..Default::default()
         };
         let actual = super::subcommand(super::runfile())
             .parse(
