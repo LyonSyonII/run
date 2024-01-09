@@ -42,7 +42,7 @@ impl<'i> Command<'i> {
         }
         fmt!("Usage: {parents} {name} {args}")
     }
-    
+
     pub fn doc(&self, parents: &StrList) -> std::borrow::Cow<'_, str> {
         let mut lines = self.doc.lines().collect::<Vec<_>>();
         let last = lines.last().cloned().unwrap_or_default();

@@ -23,7 +23,7 @@ impl<'i> Runfile<'i> {
             .max()
             .unwrap_or_default()
     }
-    
+
     #[momo::momo]
     pub fn doc(&self, name: impl AsRef<str>, parents: &StrList) -> std::borrow::Cow<'_, str> {
         let (parents, name) = if name.is_empty() {
@@ -107,17 +107,14 @@ impl<'i> Runfile<'i> {
         }
 
         let Some(first) = first.map(String::as_str) else {
-            let Some(cmd) = self
-                .commands
-                .get("default")
-                else {
-                    let indent = self.calculate_indent();
-                    println!("ERROR: No command specified and no default command found\n");
-                    println!("{}", self.doc("", &parents));
-                    self.print_commands(&parents, indent);
-                    self.print_subcommands(&parents, indent);
-                    return Ok(());
-                };
+            let Some(cmd) = self.commands.get("default") else {
+                let indent = self.calculate_indent();
+                println!("ERROR: No command specified and no default command found\n");
+                println!("{}", self.doc("", &parents));
+                self.print_commands(&parents, indent);
+                self.print_subcommands(&parents, indent);
+                return Ok(());
+            };
             return cmd
                 .run(&parents, args)
                 .map_err(|e| f!("Command execution failed: {}", e).into());

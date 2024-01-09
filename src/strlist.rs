@@ -22,7 +22,9 @@ impl<'a> StrList<'a> {
     }
 
     pub fn last(&self) -> &std::borrow::Cow<'a, str> {
-        self.elements.last().unwrap_or(&std::borrow::Cow::Borrowed(""))
+        self.elements
+            .last()
+            .unwrap_or(&std::borrow::Cow::Borrowed(""))
     }
 
     pub fn except_last(&'a self) -> StrListSlice<'a> {
