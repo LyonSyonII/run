@@ -1,6 +1,7 @@
-use crate::Goodbye;
 pub use std::format as fmt;
 use std::{io::Write, str::FromStr};
+
+use crate::utils::Goodbye;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Command<'i> {
@@ -63,8 +64,8 @@ impl<'i> Command<'i> {
         }
     }
 
-    pub fn run(&self, name: impl AsRef<str>, args: impl AsRef<[String]>) -> std::io::Result<()> {
-        let name = name.as_ref();
+    pub fn run(&self, args: impl AsRef<[String]>) -> std::io::Result<()> {
+        let name = self.name;
         let args = args.as_ref();
         if args.iter().any(|a| a == "--help" || a == "-h") {
             println!("{}", self.doc);

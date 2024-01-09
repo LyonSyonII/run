@@ -1,6 +1,6 @@
 use crate::{
-    runner::{Command, Language},
-    Goodbye, Runfile,
+    command::{Command, Language},
+    runfile::Runfile,
 };
 use chumsky::prelude::*;
 use std::collections::HashMap;
@@ -8,23 +8,6 @@ pub use std::format as fmt;
 
 type Error<'i> = extra::Err<Rich<'i, char>>;
 type Parsed<'i, T> = Boxed<'i, 'i, &'i str, T, Error<'i>>;
-
-trait ParserExt<'i, T>: Parser<'i, &'i str, T, Error<'i>>
-where
-    Self: Sized,
-{
-    fn expect(
-        self,
-        msg: &'static str,
-    ) -> chumsky::combinator::MapErr<Self, impl Fn(Rich<'i, char>) -> Rich<'i, char>> {
-        let closure = move |e: Rich<'i, char>| Rich::custom(*e.span(), msg);
-        self.map_err(closure)
-    }
-}
-impl<'i, P, T> ParserExt<'i, T> for P where
-    P: Parser<'i, &'i str, T, Error<'i>>
-{
-}
 
 fn error<'i>(e: Rich<'i, char>, msg: &'static str) -> Rich<'i, char> {
     Rich::custom(*e.span(), msg)
@@ -75,8 +58,8 @@ fn args<'i>() -> Parsed<'i, Vec<&'i str>> {
         .allow_trailing()
         .collect()
         .delimited_by(
-            just('(').padded(),
-            just(')').map_err(|e| error(e, "expected ')'")),
+            just('(').padded().expect("expected '(' before arguments"),
+            just(')').expect("expected ')' after arguments"),
         )
         .boxed()
 }
@@ -105,15 +88,19 @@ fn signature<'i>() -> Parsed<'i, (Language, &'i str, Vec<&'i str>)> {
     language_fn()
         .padded()
         .then(text::ident().padded().expect("expected command name"))
-        .then(args().padded().expect("expected command args"))
+        .then(args())
         .map(|((lang, name), args)| (lang, name, args))
         .boxed()
 }
 
 fn command<'i>() -> Parsed<'i, (&'i str, Command<'i>)> {
     doc()
-        .then_ignore(just('\n').not().expect("documentation must be adjacent to a command"))
-        .then(signature().padded().expect("expected command signature"))
+        .then_ignore(
+            just('\n')
+                .not()
+                .expect("documentation must be adjacent to a command"),
+        )
+        .then(signature().padded())
         .then(body().padded().expect("expected command body"))
         .map(|((doc, (lang, name, args)), script)| {
             (name, Command::new(name, doc, lang, args, script))
@@ -204,13 +191,26 @@ pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
         .padded(); */
 }
 
+trait ParserExt<'i, T>: Parser<'i, &'i str, T, Error<'i>>
+where
+    Self: Sized,
+{
+    fn expect(
+        self,
+        msg: impl AsRef<str>,
+    ) -> chumsky::combinator::MapErr<Self, impl Fn(Rich<'i, char>) -> Rich<'i, char>> {
+        self.map_err(move |e: Rich<'i, char>| Rich::custom(*e.span(), msg.as_ref()))
+    }
+}
+impl<'i, P, T> ParserExt<'i, T> for P where P: Parser<'i, &'i str, T, Error<'i>> {}
+
 #[cfg(test)]
 mod test {
     use std::collections::HashMap;
 
     use crate::{
-        runner::{Command, Language},
-        Runfile,
+        command::{Command, Language},
+        runfile::Runfile,
     };
     use chumsky::Parser as _;
 
@@ -337,7 +337,8 @@ mod test {
                 sh fn greet(name) { 
                     echo 'Hello, $name.sh';
                 }"#,
-            ).into_result();
+            )
+            .into_result();
         assert_eq!(
             actual_command,
             Ok(("greet", expected_command.clone())),
