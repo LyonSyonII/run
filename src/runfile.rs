@@ -24,6 +24,11 @@ impl<'i> Runfile<'i> {
             .max()
             .unwrap_or_default()
     }
+    
+    pub fn with_doc(mut self, doc: impl Into<String>) -> Self {
+        self.doc = doc.into();
+        self
+    }
 
     #[momo::momo]
     pub fn doc(&self, name: impl AsRef<str>, parents: &StrList) -> std::borrow::Cow<'_, str> {

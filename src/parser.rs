@@ -134,13 +134,14 @@ fn include<'i>() -> Parsed<'i, (&'i str, Runfile<'i>)> {
 fn subcommand<'i>(runfile: Parsed<'i, Runfile<'i>>) -> Parsed<'i, (&'i str, Runfile<'i>)> {
     doc()
         .padded()
-        .then(text::keyword("sub").expect("expected 'sub'"))
+        .then_ignore(text::keyword("sub").expect("expected 'sub'"))
         .padded()
-        .ignore_then(text::ident().expect("expected subcommand name"))
+        .then(text::ident().expect("expected subcommand name"))
         .padded()
         .then_ignore(just('{').expect("expected '{'"))
         .then(runfile)
         .then_ignore(just('}').expect("expected '}'"))
+        .map(|((doc, name), runfile): ((String, &str), Runfile)| (name, runfile.with_doc(doc)))
         .boxed()
 }
 
