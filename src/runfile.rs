@@ -24,7 +24,7 @@ impl<'i> Runfile<'i> {
             .max()
             .unwrap_or_default()
     }
-    
+
     pub fn with_doc(mut self, doc: impl Into<String>) -> Self {
         self.doc = doc.into();
         self

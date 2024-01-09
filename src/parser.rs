@@ -31,12 +31,18 @@ fn doc<'i>() -> Parsed<'i, String> {
                 .and_is(text::newline().not())
                 .repeated()
                 .to_slice()
-                .map(|s: &str| s.trim()),
         )
         .separated_by(text::newline())
         .allow_trailing()
         .collect::<Vec<&'i str>>()
         .map(|v| v.join("\n"))
+        .then(just('\n').or_not())
+        .validate(|(doc, newline): (String, Option<char>), e, emitter| {
+            if newline.is_some() {
+                emitter.emit(Rich::custom(e.span(), "empty line found, documentation must be adjacent"));
+            }
+            doc
+        })
         .boxed()
 }
 
@@ -94,17 +100,27 @@ fn signature<'i>() -> Parsed<'i, (Language, &'i str, Vec<&'i str>)> {
 
 fn command<'i>() -> Parsed<'i, (&'i str, Command<'i>)> {
     doc()
-        .then_ignore(
-            just('\n')
-                .not()
-                .expect("documentation must be adjacent to a command"),
-        )
         .then(signature().padded())
         .then(body().padded().expect("expected command body"))
         .map(|((doc, (lang, name, args)), script)| {
             (name, Command::new(name, doc, lang, args, script))
         })
         .padded()
+        .boxed()
+}
+
+fn subcommand<'i>(runfile: Parsed<'i, Runfile<'i>>) -> Parsed<'i, (&'i str, Runfile<'i>)> {
+    doc()
+        .then_ignore(just('\n').not())
+        .expect("documentation must be adjacent to a command")
+        .then_ignore(text::keyword("sub").expect("expected 'sub'"))
+        .padded()
+        .then(text::ident().expect("expected subcommand name"))
+        .padded()
+        .then_ignore(just('{').expect("expected '{'"))
+        .then(runfile)
+        .then_ignore(just('}').expect("expected '}'"))
+        .map(|((doc, name), runfile): ((String, &str), Runfile)| (name, runfile.with_doc(doc)))
         .boxed()
 }
 
@@ -128,20 +144,6 @@ fn include<'i>() -> Parsed<'i, (&'i str, Runfile<'i>)> {
             })?;
             Ok((path, runfile))
         })
-        .boxed()
-}
-
-fn subcommand<'i>(runfile: Parsed<'i, Runfile<'i>>) -> Parsed<'i, (&'i str, Runfile<'i>)> {
-    doc()
-        .padded()
-        .then_ignore(text::keyword("sub").expect("expected 'sub'"))
-        .padded()
-        .then(text::ident().expect("expected subcommand name"))
-        .padded()
-        .then_ignore(just('{').expect("expected '{'"))
-        .then(runfile)
-        .then_ignore(just('}').expect("expected '}'"))
-        .map(|((doc, name), runfile): ((String, &str), Runfile)| (name, runfile.with_doc(doc)))
         .boxed()
 }
 
@@ -192,6 +194,14 @@ where
         msg: impl AsRef<str>,
     ) -> chumsky::combinator::MapErr<Self, impl Fn(Rich<'i, char>) -> Rich<'i, char>> {
         self.map_err(move |e: Rich<'i, char>| Rich::custom(*e.span(), msg.as_ref()))
+    }
+
+    fn expect_with_start(
+        self,
+        msg: impl AsRef<str>,
+        start: usize,
+    ) -> chumsky::combinator::MapErr<Self, impl Fn(Rich<'i, char>) -> Rich<'i, char>> {
+        self.map_err(move |e: Rich<'i, char>| Rich::custom((start..e.span().end()).into(), msg.as_ref()))
     }
 }
 impl<'i, P, T> ParserExt<'i, T> for P where P: Parser<'i, &'i str, T, Error<'i>> {}
@@ -358,7 +368,7 @@ mod test {
                     "pata",
                     Command::new(
                         "pata",
-                        "Usage: run pata <NAME> <AGE>".into(),
+                        "".into(),
                         Language::Bash,
                         vec!["name", "age"],
                         "echo \"Hello, $name.sh\";",

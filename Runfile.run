@@ -3,15 +3,15 @@ in "./include.run"
 
 # This command has custom documentation
 # The usage is filled in automatically if the last line doesn't start with "Usage:"
-sh fn sh (name) {
+sh cmd sh (name) {
   echo "Hello, $name from Bash!";
 }
 
-py fn py(name) {
+py cmd py(name) {
   print("Hello, $name from Python!")
 }
 
-js fn js(name) {
+js cmd js(name) {
   // You can write any code, even functions
   function greet() {
     console.log("Hello, $name from Javascript!");
@@ -19,18 +19,18 @@ js fn js(name) {
   greet();
 }
 
-rs fn rs(name) {
+rs cmd rs(name) {
   println!("Hello, $name from Rust!");
 }
 
-fn args(name age) {
+cmd args(name age) {
   echo "Hello, $name. You are $age years old."
 }
 
 # This subcommand has custom documentation
 sub sub {
   # This is a subcommand
-  fn hello() {
+  cmd hello() {
     echo "Hello from a subcommand!"
   }
 }
