@@ -1,8 +1,7 @@
 use std::collections::HashMap;
 use std::format as f;
 
-use ariadne::{Color, Fmt as _};
-use colored::Colorize;
+use colored::{Color, Colorize, Styles};
 
 use crate::command::Command;
 use crate::strlist::StrList;
@@ -28,22 +27,26 @@ impl<'i> Runfile<'i> {
 
     #[momo::momo]
     pub fn doc(&self, name: impl AsRef<str>, parents: &StrList) -> std::borrow::Cow<'_, str> {
-        let (parents, name, usage) = if name.is_empty() {
+        let parents = parents.as_slice().color(Color::Cyan).bold();
+        let (name, usage) = if name.is_empty() {
             // Main
-            (
-                parents.except_last().to_string().cyan().bold(),
-                parents.last_slice().to_string().cyan().bold(),
-                "Usage:".green().bold().to_string(),
-            )
+            (None, "Usage:".green().bold())
         } else {
             // Subcommand
-            (parents.as_slice().to_string().cyan().bold(), name.cyan().bold(), "Usage:".bold().to_string())
+            (Some(name.to_string().cyan().bold()), "Usage:".bold())
         };
-        
+
         let mut lines = self.doc.lines().collect::<Vec<_>>();
         let last = lines.last().cloned().unwrap_or_default();
         if !last.starts_with("Usage:") {
-            let usage = f!("{usage} {parents} {name} {}\n", "[COMMAND] [ARGS...]".cyan());
+            let usage = if let Some(name) = name {
+                f!(
+                    "{usage} {parents} {name} {}\n",
+                    "[COMMAND] [ARGS...]".cyan()
+                )
+            } else {
+                f!("{usage} {parents} {}\n", "[COMMAND] [ARGS...]".cyan())
+            };
             lines.push(&usage);
             lines.join("\n").into()
         } else {
@@ -125,7 +128,7 @@ impl<'i> Runfile<'i> {
         let Some(first) = first.map(String::as_str) else {
             let Some(cmd) = self.commands.get("default") else {
                 self.print_help(
-                    "ERROR: No command specified and no default command found".fg(Color::Red),
+                    "ERROR: No command specified and no default command found".red(),
                     &parents,
                 );
                 return Ok(());
@@ -142,7 +145,7 @@ impl<'i> Runfile<'i> {
             sub.run(parents.append(first), args.get(1..).unwrap_or_default())
         } else {
             self.print_help(
-                f!("ERROR: Could not find command or subcommand: {}", first).fg(Color::Red),
+                f!("ERROR: Could not find command or subcommand: {}", first).red(),
                 &parents,
             );
             std::process::exit(1);

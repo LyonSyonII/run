@@ -1,5 +1,4 @@
-use ariadne::{Color, Fmt as _};
-use colored::Colorize;
+use colored::{Color, Colorize, Style, Styles};
 
 pub struct StrList<'a> {
     elements: Vec<std::borrow::Cow<'a, str>>,
@@ -9,6 +8,8 @@ pub struct StrList<'a> {
 pub struct StrListSlice<'a> {
     elements: &'a [std::borrow::Cow<'a, str>],
     separator: &'a std::borrow::Cow<'a, str>,
+    color: Color,
+    bold: bool,
 }
 
 impl<'a> StrList<'a> {
@@ -18,44 +19,52 @@ impl<'a> StrList<'a> {
             separator: separator.into(),
         }
     }
-    
+
     pub fn append(mut self, s: impl Into<std::borrow::Cow<'a, str>>) -> Self {
         self.elements.push(s.into());
         self
     }
 
-    pub fn last(&self) -> &std::borrow::Cow<'a, str> {
-        self.elements
-            .last()
-            .unwrap_or(&std::borrow::Cow::Borrowed(""))
-    }
-
     pub fn except_last(&'a self) -> StrListSlice<'a> {
         let last = self.elements.len() - 1;
-        StrListSlice {
-            elements: self.elements.get(..last).unwrap_or(&[]),
-            separator: &self.separator,
-        }
+        StrListSlice::new(self.elements.get(..last).unwrap_or(&[]), &self.separator)
     }
 
-    pub fn last_slice(&'a self) -> StrListSlice<'a> {
+    pub fn last(&'a self) -> StrListSlice<'a> {
         let last = self.elements.len() - 1;
-        StrListSlice {
-            elements: self.elements.get(last..=last).unwrap_or(&[]),
-            separator: &self.separator,
-        }
+        StrListSlice::new(
+            self.elements.get(last..=last).unwrap_or(&[]),
+            &self.separator,
+        )
     }
-    
+
     pub fn as_slice(&'a self) -> StrListSlice<'a> {
-        StrListSlice {
-            elements: &self.elements,
-            separator: &self.separator,
-        }
+        StrListSlice::new(&self.elements, &self.separator)
     }
 }
 
 impl<'a> StrListSlice<'a> {
+    fn new(
+        elements: &'a [std::borrow::Cow<'a, str>],
+        separator: &'a std::borrow::Cow<'a, str>,
+    ) -> Self {
+        Self {
+            elements,
+            separator,
+            color: Color::White,
+            bold: false,
+        }
+    }
 
+    pub fn color(mut self, color: Color) -> Self {
+        self.color = color;
+        self
+    }
+
+    pub fn bold(mut self) -> Self {
+        self.bold = true;
+        self
+    }
 }
 
 impl<'a> std::fmt::Display for StrList<'a> {
@@ -66,7 +75,13 @@ impl<'a> std::fmt::Display for StrList<'a> {
 
 impl<'a> std::fmt::Display for StrListSlice<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut iter = self.elements.iter();
+        let mut iter = self.elements.iter().map(|s| {
+            let mut s = s.color(self.color);
+            if self.bold {
+                s = s.bold()
+            }
+            s
+        });
         if let Some(first) = iter.next() {
             write!(f, "{}", first)?;
             for s in iter {

@@ -1,8 +1,7 @@
 pub use std::format as fmt;
 use std::{io::Write, str::FromStr};
 
-use ariadne::Color;
-use colored::Colorize as _;
+use colored::{Color, Colorize as _};
 
 use crate::{strlist::StrList, utils::Goodbye};
 
@@ -34,7 +33,7 @@ impl<'i> Command<'i> {
 
     pub fn usage(&self, parents: &StrList) -> String {
         let usage = "Usage:".bold();
-        let parents = parents.as_slice().to_string().cyan().bold();
+        let parents = parents.as_slice().color(Color::Cyan).bold();
         let name = self.name.cyan().bold();
         let args = self
             .args
