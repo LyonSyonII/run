@@ -58,10 +58,15 @@ impl<'i> Runfile<'i> {
         };
         lines.append(usage)
     }
-    
-    fn print_commands(&self, parents: StrListSlice, indent: usize, to: &mut impl std::io::Write) -> Result<(), Str<'_>> {
+
+    fn print_commands(
+        &self,
+        parents: StrListSlice,
+        indent: usize,
+        to: &mut impl std::io::Write,
+    ) -> Result<(), Str<'_>> {
         let op = |e: std::io::Error| Str::from(e.to_string());
-        
+
         writeln!(to, "{}", "Commands:".green().bold()).map_err(op)?;
         let mut commands = self.commands.values().collect::<Vec<_>>();
         commands.sort_by(|a, b| {
@@ -85,7 +90,12 @@ impl<'i> Runfile<'i> {
         Ok(())
     }
 
-    fn print_subcommands(&self, parents: StrListSlice, indent: usize, to: &mut impl std::io::Write) -> Result<(), Str<'_>> {
+    fn print_subcommands(
+        &self,
+        parents: StrListSlice,
+        indent: usize,
+        to: &mut impl std::io::Write,
+    ) -> Result<(), Str<'_>> {
         if self.subcommands.is_empty() {
             return Ok(());
         }
@@ -98,7 +108,13 @@ impl<'i> Runfile<'i> {
         for (name, sub) in subcommands {
             let mut doc = sub.doc(name, parents);
             let name = f!("{:indent$}", name);
-            writeln!(to, "    {}   {}", name.cyan().bold(), doc.pop_front().unwrap()).map_err(op)?;
+            writeln!(
+                to,
+                "    {}   {}",
+                name.cyan().bold(),
+                doc.pop_front().unwrap()
+            )
+            .map_err(op)?;
             for l in doc {
                 writeln!(to, "    {:indent$}   {}", " ", l).map_err(op)?;
             }
@@ -107,7 +123,11 @@ impl<'i> Runfile<'i> {
         Ok(())
     }
 
-    fn print_help(&self, msg: impl std::fmt::Display, parents: StrListSlice) -> Result<(), Str<'_>> {
+    fn print_help(
+        &self,
+        msg: impl std::fmt::Display,
+        parents: StrListSlice,
+    ) -> Result<(), Str<'_>> {
         let op = |e: std::io::Error| Str::from(e.to_string());
 
         let indent = self.calculate_indent();
@@ -120,7 +140,7 @@ impl<'i> Runfile<'i> {
 
         Ok(())
     }
-    
+
     pub fn run<'a>(
         &'a self,
         parents: impl Into<StrList<'a>>,

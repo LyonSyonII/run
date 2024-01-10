@@ -12,9 +12,7 @@ pub(crate) fn execute(input: &str) -> Result<(), Str<'_>> {
         .stderr(std::process::Stdio::piped())
         .stdin(std::process::Stdio::piped())
         .spawn()
-        .map_err(|error| {
-            super::exe_not_found("python", error)
-        })?;
+        .map_err(|error| super::exe_not_found("python", error))?;
 
     child
         .stdin
