@@ -36,8 +36,8 @@ impl<'i> Command<'i> {
         }
     }
 
-    pub fn usage(&self, parents: StrListSlice) -> String {
-        let usage = "Usage:".bold();
+    pub fn usage(&self, parents: StrListSlice, color: Color, newlines: usize) -> String {
+        let usage = "Usage:".color(color).bold();
         let parents = parents.color(Color::BrightCyan).bold();
         let name = self.name.bright_cyan().bold();
         let args = self
@@ -48,37 +48,46 @@ impl<'i> Command<'i> {
             .unwrap_or_default()
             .cyan();
         if name.contains("default") {
-            return fmt!("Usage: {parents} {args}");
+            return fmt!("{usage} {parents} {args}{:\n<newlines$}", "");
         }
-        fmt!("{usage} {parents} {name} {args}")
+        fmt!("{:\n<newlines$}{usage} {parents} {name} {args}", "")
     }
-
+    
     pub fn doc(&'i self, parents: StrListSlice) -> StrList<'i> {
         let lines = StrList::from(("\n", self.doc.lines()));
         let last = lines.last().unwrap_or_default();
         if !last.starts_with("Usage:") {
-            let usage = self.usage(parents);
+            let usage = self.usage(parents, Color::White, 0);
             lines.append(usage)
         } else {
             lines
         }
     }
 
-    pub fn run(&self, parents: StrListSlice, args: impl AsRef<[String]>) -> std::io::Result<()> {
+    pub fn print_help(&self, parents: StrListSlice, indent: usize, to: &mut impl Write) -> std::io::Result<()> {
+        let lines = StrList::from(("\n", self.doc.lines()));
+        let usage = self.usage(parents, Color::BrightGreen, !lines.is_empty() as usize);
+        
+        for l in lines.append(usage) {
+            writeln!(to, "{:indent$}{l}", "")?;
+        }
+
+        Ok(())
+    }
+
+    pub fn run(&self, parents: StrListSlice, args: impl AsRef<[String]>, runfile_docs: impl Fn(&mut Vec<u8>)) -> std::io::Result<()> {
         let args = args.as_ref();
         let name = self.name;
         if args.iter().any(|a| a == "--help" || a == "-h") {
-            println!("{}", self.doc);
+            self.print_help(parents, 0, &mut std::io::stdout())?;
             return Ok(());
         }
 
         if args.len() < self.args.len() {
-            // TODO: Make output prettier
-            eprintln!(
-                "run {name}: Expected arguments {:?}, got {:?}",
-                self.args, args
-            );
-            eprintln!("See 'run {name} --help' for more information");
+            let error = format!("{parents} {name}: Expected arguments {:?}, got {:?}", self.args, args).bright_red().bold();
+            eprintln!("{error}");
+            let help = format!("{parents} {name} --help").bold().bright_cyan();
+            eprintln!("See '{help}' for more information");
             std::process::exit(1);
         }
 
@@ -96,8 +105,16 @@ impl<'i> Command<'i> {
             let name = fmt!("${name}");
             script = script.replace(&name, arg);
         }
-        script = script.replace("$doc", &self.doc(parents).to_string());
-        script = script.replace("$usage", &self.usage(parents));
+        
+        let runfile_docs = {
+            let mut buf = Vec::new();
+            runfile_docs(&mut buf);
+            String::from_utf8(buf).unwrap() 
+        };
+
+        script = script.replace("$doc", &runfile_docs);
+        script = script.replace("$cmddoc", &self.doc(parents).to_string());
+        script = script.replace("$usage", &self.usage(parents, Color::White, 0));
 
         if let Err(e) = self.lang.execute(&script) {
             eprintln!(

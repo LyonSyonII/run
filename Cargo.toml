@@ -17,6 +17,7 @@ beef = { version = "0.5.2", features = ["const_fn"] }
 chumsky = { version = "1.0.0-alpha.6", features = ["label"] }
 colored = "2.1.0"
 momo = "0.2.2"
+tempfile = "3.9.0"
 which = "5.0.0"
 
 [profile.dev]

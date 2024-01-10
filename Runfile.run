@@ -1,33 +1,36 @@
-in "./include.run"
+cmd default() {
+  # When no command is given, 'default' is run
+  # 'doc' is a special variable that contains the whole documentation of the program
+  echo -n "$doc";
+}
 
-# This command has custom documentation
-# The usage is filled in automatically if the last line doesn't start with "Usage:"
 sh cmd sh(name) {
-  echo "Hello, $name from the Shell!";
+  # String interpolation is done in all languages with $argument
+  echo "Hello $name from the Shell!";
 }
 
 sh cmd bash(name) {
-  echo "Hello, $name from Bash!";
+  echo "Hello $name from Bash!";
 }
 
 py cmd py(name) {
-  print("Hello, $name from Python!")
+  print("Hello $name from Python!")
 }
 
 js cmd js(name) {
   // You can write any code, even functions
   function greet() {
-    console.log("Hello, $name from Javascript!");
+    console.log("Hello $name from Javascript!");
   }
   greet();
 }
 
 rs cmd rs(name) {
-  println!("Hello, $name from Rust!");
+  println!("Hello $name from Rust!");
 }
 
 cmd args(name age) {
-  echo "Hello, $name. You are $age years old."
+  echo "Hello $name, you are $age years old."
 }
 
 # This subcommand has custom documentation
@@ -37,3 +40,5 @@ sub sub {
     echo "Hello from a subcommand!"
   }
 }
+
+in "./include.run"

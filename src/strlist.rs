@@ -21,6 +21,10 @@ impl<'a> StrList<'a> {
         }
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.elements.len() <= 1
+    }
+
     pub fn elements(&'a self) -> &'a [Str<'a>] {
         self.elements.get(1..).unwrap_or_default()
     }
@@ -130,9 +134,12 @@ impl<'a> std::fmt::Display for StrList<'a> {
 impl<'a> std::fmt::Display for StrListSlice<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut iter = self.elements().iter().map(|s| {
-            let mut s = s.color(self.color);
+            let mut s = colored::ColoredString::from(s.as_ref());
             if self.bold {
                 s = s.bold()
+            }
+            if self.color != Color::White {
+                s = s.color(self.color)
             }
             s
         });

@@ -63,7 +63,7 @@ impl<'i> Runfile<'i> {
         &self,
         parents: StrListSlice,
         indent: usize,
-        to: &mut impl std::io::Write,
+        to: &mut (impl std::io::Write + ?Sized),
     ) -> Result<(), Str<'_>> {
         let op = |e: std::io::Error| Str::from(e.to_string());
         
@@ -79,7 +79,7 @@ impl<'i> Runfile<'i> {
         for cmd in commands {
             let doc = cmd.doc(parents);
             let mut lines = doc.into_iter();
-
+            
             let first = lines.next().unwrap();
             writeln!(to, "    {:indent$}   {}", cmd.name.bright_cyan().bold(), first).map_err(op)?;
             for l in lines {
@@ -94,7 +94,7 @@ impl<'i> Runfile<'i> {
         &self,
         parents: StrListSlice,
         indent: usize,
-        to: &mut impl std::io::Write,
+        to: &mut (impl std::io::Write + ?Sized),
     ) -> Result<(), Str<'_>> {
         if self.subcommands.is_empty() {
             return Ok(());
@@ -115,8 +115,12 @@ impl<'i> Runfile<'i> {
                 doc.pop_front().unwrap()
             )
             .map_err(op)?;
+            let last = doc.pop();
             for l in doc {
                 writeln!(to, "    {:indent$}   {}", " ", l).map_err(op)?;
+            }
+            if let Some(last) = last {
+                write!(to, "    {:indent$}   {}", " ", last).map_err(op)?;
             }
         }
 
@@ -125,18 +129,21 @@ impl<'i> Runfile<'i> {
 
     fn print_help(
         &self,
-        msg: impl std::fmt::Display,
+        msg: impl AsRef<str>,
         parents: StrListSlice,
+        to: &mut (impl std::io::Write + ?Sized),
     ) -> Result<(), Str<'_>> {
         let op = |e: std::io::Error| Str::from(e.to_string());
+        let msg = msg.as_ref();
 
         let indent = self.calculate_indent();
-        let stderr = std::io::stderr();
-        let mut stderr = stderr.lock();
-        writeln!(stderr, "{}", msg).map_err(op)?;
-        writeln!(stderr, "{}", self.doc("", parents)).map_err(op)?;
-        self.print_commands(parents, indent, &mut stderr)?;
-        self.print_subcommands(parents, indent, &mut stderr)?;
+
+        if !msg.is_empty() {
+            writeln!(to, "{}", msg).map_err(op)?;
+        }
+        writeln!(to, "{}", self.doc("", parents)).map_err(op)?;
+        self.print_commands(parents, indent, to)?;
+        self.print_subcommands(parents, indent, to)?;
 
         Ok(())
     }
@@ -149,7 +156,10 @@ impl<'i> Runfile<'i> {
         let parents = parents.into();
 
         let first = args.first();
-
+        if first.is_some_and_oneof(["-h", "--help"]) {
+            self.print_help("", parents.as_slice(), &mut std::io::stdout())?;
+            return Ok(());
+        }
         if first.is_some_and_oneof(["-c", "--commands"]) {
             let indent = self.calculate_indent();
             let stdout = std::io::stdout();
@@ -159,28 +169,34 @@ impl<'i> Runfile<'i> {
             return Ok(());
         }
 
+        let runfile_docs = |to: &mut Vec<u8>| {
+            self.print_help("", parents.as_slice(), to).unwrap_or_default()
+        };
+
         let Some(first) = first.map(String::as_str) else {
             let Some(cmd) = self.commands.get("default") else {
                 self.print_help(
-                    "Error: No command specified and no default command found".bright_red().bold(),
+                    "Error: No command specified and no default command found".bright_red().bold().to_string(),
                     parents.as_slice(),
+                    &mut std::io::stderr()
                 )?;
                 return Ok(());
             };
             return cmd
-                .run(parents.as_slice(), args)
+                .run(parents.as_slice(), args, runfile_docs)
                 .map_err(|e| f!("Command execution failed: {}", e).into());
         };
 
         if let Some(cmd) = self.commands.get(first) {
-            cmd.run(parents.as_slice(), args.get(1..).unwrap_or_default())
+            cmd.run(parents.as_slice(), args.get(1..).unwrap_or_default(), runfile_docs)
                 .map_err(|e| f!("Command execution failed: {}", e).into())
         } else if let Some(sub) = self.subcommands.get(first) {
             sub.run(parents.append(first), args.get(1..).unwrap_or_default())
         } else {
             self.print_help(
-                f!("ERROR: Could not find command or subcommand: {}", first).bright_red(),
+                f!("ERROR: Could not find command or subcommand: {}", first).bright_red().to_string(),
                 parents.as_slice(),
+                &mut std::io::stderr()
             )?;
             std::process::exit(1);
         }
