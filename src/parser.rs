@@ -1,7 +1,4 @@
-use crate::{
-    command::{Command, Language},
-    runfile::Runfile,
-};
+use crate::{command::Command, lang::Language, runfile::Runfile};
 use chumsky::prelude::*;
 pub use std::format as fmt;
 
@@ -26,12 +23,7 @@ fn string<'i>() -> Parsed<'i, &'i str> {
 fn doc<'i>() -> Parsed<'i, String> {
     text::inline_whitespace() // indentation
         .ignore_then(just('#').then_ignore(text::inline_whitespace().or_not()))
-        .ignore_then(
-            any()
-                .and_is(text::newline().not())
-                .repeated()
-                .to_slice()
-        )
+        .ignore_then(any().and_is(text::newline().not()).repeated().to_slice())
         .separated_by(text::newline())
         .allow_trailing()
         .collect::<Vec<&'i str>>()
@@ -39,7 +31,10 @@ fn doc<'i>() -> Parsed<'i, String> {
         .then(just('\n').or_not())
         .validate(|(doc, newline): (String, Option<char>), e, emitter| {
             if newline.is_some() {
-                emitter.emit(Rich::custom(e.span(), "empty line found, documentation must be adjacent"));
+                emitter.emit(Rich::custom(
+                    e.span(),
+                    "empty line found, documentation must be adjacent",
+                ));
             }
             doc
         })
@@ -126,23 +121,38 @@ fn subcommand<'i>(runfile: Parsed<'i, Runfile<'i>>) -> Parsed<'i, (&'i str, Runf
 
 fn include<'i>() -> Parsed<'i, (&'i str, Runfile<'i>)> {
     text::keyword("in")
-        .padded()
-        .ignore_then(string().expect("expected include path"))
-        .try_map(|path, span| {
-            // TODO: Remove leak (Use Cow?)
-            let file = std::fs::read_to_string(path)
-                .map_err(|e| Rich::custom(span, e))?
-                .leak();
-            let runfile = runfile().parse(file).into_result().map_err(|e| {
-                let errors = e
-                    .into_iter()
-                    .map(|e| fmt!("{e:?}"))
-                    .fold(fmt!("include {path} has errors:"), |acc, s| {
-                        fmt!("{acc}\n{s}")
-                    });
-                Rich::custom(span, errors)
-            })?;
-            Ok((path, runfile))
+        .ignore_then(text::whitespace())
+        .ignore_then(string().or_not())
+        // (doc, newline): (String, Option<char>), e, emitter
+        .validate(|path, e, emitter| {
+            let Some(path) = path else {
+                emitter.emit(Rich::custom(e.span(), "expected path to include"));
+                return ("", Runfile::default());
+            };
+
+            // TODO: Remove leak (although string is alive until the end of the program, so it shouldn't be a problem)
+            let file = match std::fs::read_to_string(path) {
+                Ok(s) => s.leak(),
+                Err(err) => {
+                    emitter.emit(Rich::custom(e.span(), fmt!("{err}")));
+                    return (path, Runfile::default());
+                }
+            };
+            let runfile = match runfile().parse(file).into_result() {
+                Ok(r) => r,
+                Err(errors) => {
+                    let errors = errors
+                        .into_iter()
+                        .map(|e| fmt!("{e:?}"))
+                        .fold(fmt!("include {path} has errors:"), |acc, s| {
+                            fmt!("{acc}\n{s}")
+                        });
+                    emitter.emit(Rich::custom(e.span(), errors));
+                    Runfile::default()
+                }
+            };
+
+            (path, runfile)
         })
         .boxed()
 }
@@ -160,6 +170,7 @@ pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
             subcommand(runfile.boxed()).map(Results::Subcommand),
             command().map(Results::Command),
         ))
+        .padded()
         .repeated()
         .collect::<Vec<Results<'i>>>()
         .map(|results| {
@@ -201,7 +212,9 @@ where
         msg: impl AsRef<str>,
         start: usize,
     ) -> chumsky::combinator::MapErr<Self, impl Fn(Rich<'i, char>) -> Rich<'i, char>> {
-        self.map_err(move |e: Rich<'i, char>| Rich::custom((start..e.span().end()).into(), msg.as_ref()))
+        self.map_err(move |e: Rich<'i, char>| {
+            Rich::custom((start..e.span().end()).into(), msg.as_ref())
+        })
     }
 }
 impl<'i, P, T> ParserExt<'i, T> for P where P: Parser<'i, &'i str, T, Error<'i>> {}
@@ -210,10 +223,7 @@ impl<'i, P, T> ParserExt<'i, T> for P where P: Parser<'i, &'i str, T, Error<'i>>
 mod test {
     use std::collections::HashMap;
 
-    use crate::{
-        command::{Command, Language},
-        runfile::Runfile,
-    };
+    use crate::{command::Command, lang::Language, runfile::Runfile};
     use chumsky::Parser as _;
 
     #[test]

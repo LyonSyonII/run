@@ -4,6 +4,7 @@ use command::Command;
 pub use std::format as fmt;
 
 mod command;
+mod lang;
 mod parser;
 mod runfile;
 mod strlist;

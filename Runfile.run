@@ -1,9 +1,12 @@
 in "./include.run"
 
-
 # This command has custom documentation
 # The usage is filled in automatically if the last line doesn't start with "Usage:"
 sh cmd sh(name) {
+  echo "Hello, $name from the Shell!";
+}
+
+sh cmd bash(name) {
   echo "Hello, $name from Bash!";
 }
 

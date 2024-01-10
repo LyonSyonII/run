@@ -4,7 +4,7 @@ use std::format as f;
 use colored::{Color, Colorize, Styles};
 
 use crate::command::Command;
-use crate::strlist::{StrList, Str, StrListSlice};
+use crate::strlist::{Str, StrList, StrListSlice};
 use crate::utils::OptionExt;
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
@@ -29,7 +29,7 @@ impl<'i> Runfile<'i> {
         self.doc = doc.into();
         self
     }
-    
+
     pub fn doc(&self, name: impl AsRef<str>, parents: StrListSlice) -> StrList<'_> {
         let name = name.as_ref();
         let parents = parents.color(Color::Cyan).bold();
@@ -46,7 +46,7 @@ impl<'i> Runfile<'i> {
         if last.starts_with("Usage:") {
             return lines;
         }
-        
+
         let usage = if let Some(name) = name {
             f!(
                 "{usage} {parents} {name} {}\n",
@@ -57,7 +57,7 @@ impl<'i> Runfile<'i> {
         };
         lines.append(usage)
     }
-    
+
     fn print_commands(&self, parents: StrListSlice, indent: usize) {
         eprintln!("{}", "Commands:".green().bold());
         let mut commands = self.commands.values().collect::<Vec<_>>();
@@ -71,7 +71,7 @@ impl<'i> Runfile<'i> {
         for cmd in commands {
             let doc = cmd.doc(parents);
             let mut lines = doc.into_iter();
-            
+
             let first = lines.next().unwrap();
             eprintln!("    {:indent$}   {}", cmd.name.cyan().bold(), first);
             for l in lines {

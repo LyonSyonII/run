@@ -74,9 +74,7 @@ impl<'a> StrList<'a> {
         if last == 0 {
             return StrListSlice::new(&[]);
         }
-        StrListSlice::new(
-            self.elements().get(last..=last).unwrap_or(&[])
-        )
+        StrListSlice::new(self.elements().get(last..=last).unwrap_or(&[]))
     }
 
     pub fn as_slice(&'a self) -> StrListSlice<'a> {
@@ -85,9 +83,7 @@ impl<'a> StrList<'a> {
 }
 
 impl<'a> StrListSlice<'a> {
-    fn new(
-        elements: &'a [Str<'a>],
-    ) -> Self {
+    fn new(elements: &'a [Str<'a>]) -> Self {
         Self {
             elements,
             color: Color::White,
@@ -105,7 +101,7 @@ impl<'a> StrListSlice<'a> {
         }
         self.elements.last().map(Str::as_ref)
     }
-    
+
     pub fn separator(&'a self) -> &'a str {
         self.elements.first().map(Str::as_ref).unwrap_or_default()
     }
@@ -159,7 +155,9 @@ where
 {
     fn from((separator, v): (Separator, I)) -> Self {
         Self {
-            elements: std::iter::once(separator.into()).chain(v.into_iter().map(|s| s.into())).collect(),
+            elements: std::iter::once(separator.into())
+                .chain(v.into_iter().map(|s| s.into()))
+                .collect(),
         }
     }
 }
@@ -171,21 +169,21 @@ impl<'a> IntoIterator for StrList<'a> {
     fn into_iter(mut self) -> Self::IntoIter {
         // TODO: drain(1..) is a hack to remove the separator, can probably be done with unsafe and pointers
         self.elements.drain(1..).collect::<Vec<_>>().into_iter()
-/*         
+        /*
         let separator_ptr = self.elements.as_mut_ptr();
         let elements_ptr = unsafe { separator_ptr.add(1) };
-        
+
         // SAFETY: If the original Vec only has one element (separator), len is 1, so the new iterator is empty
         let elements = if self.elements.len() <= 1 {
             Vec::new()
         }else {
             let length = self.elements.len() - 1;
             let capacity = self.elements.capacity() - 1;
-            unsafe { Vec::from_raw_parts(elements_ptr, length, capacity) } 
+            unsafe { Vec::from_raw_parts(elements_ptr, length, capacity) }
         };
 
         std::mem::forget(self);
-        
+
         // SAFETY: `elements` always has at least one element, the separator, so it's safe to deallocate it
         unsafe { std::alloc::dealloc(separator_ptr as *mut u8, std::alloc::Layout::new::<Str>()) };
         elements.into_iter() */

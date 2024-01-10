@@ -3,7 +3,11 @@ use std::{io::Write, str::FromStr};
 
 use colored::{Color, Colorize as _};
 
-use crate::{strlist::{StrList, StrListSlice, Str}, utils::Goodbye};
+use crate::{
+    lang::Language,
+    strlist::{StrList, StrListSlice},
+    utils::Goodbye,
+};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Command<'i> {
@@ -15,6 +19,7 @@ pub struct Command<'i> {
 }
 
 impl<'i> Command<'i> {
+    // TODO: Add way to specify working directory
     pub fn new(
         name: &'i str,
         doc: String,
@@ -59,7 +64,6 @@ impl<'i> Command<'i> {
         }
     }
 
-
     pub fn run(&self, parents: StrListSlice, args: impl AsRef<[String]>) -> std::io::Result<()> {
         let args = args.as_ref();
         let name = self.name;
@@ -94,43 +98,27 @@ impl<'i> Command<'i> {
         script = script.replace("$doc", &self.doc(parents).to_string());
         script = script.replace("$usage", &self.usage(parents));
 
-        let cmd = match self.lang {
-            Language::Bash => "bash",
-            Language::Rust => "rustc",
-            Language::Python => "python",
-            Language::Javascript => "node",
-        };
+        if let Err(e) = self.lang.execute(&script) {
+            eprintln!(
+                "{} {} {}{}",
+                "Error running".red(),
+                parents.color(Color::Red).bold(),
+                name.red().bold(),
+                ":".red()
+            );
+            eprintln!("{e}");
+            return Ok(());
+        }
 
-        let mut cmd = std::process::Command::new(cmd)
+        /*         let mut cmd = std::process::Command::new(cmd)
             .stdin(std::process::Stdio::piped())
             // .args(args.get(self.args.len()..).unwrap_or_default())
             .spawn()?;
         cmd.stdin
             .as_mut()
             .bye("ERROR: Could not take stdin")
-            .write_all(script.as_bytes())?;
+            .write_all(script.as_bytes())?; */
 
         Ok(())
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Language {
-    Bash,
-    Rust,
-    Python,
-    Javascript,
-}
-
-impl FromStr for Language {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "cmd" | "fn" | "sh" | "bash" | "shell" => Ok(Self::Bash),
-            "rs" | "rust" => Ok(Self::Rust),
-            "py" | "python" => Ok(Self::Python),
-            "js" | "javascript" => Ok(Self::Javascript),
-            _ => Err(fmt!("Unknown language '{s}'; expected one of [fn, sh, bash, shell, rs, rust, py, python, js, javascript]")),
-        }
     }
 }
