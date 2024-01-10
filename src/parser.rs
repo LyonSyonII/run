@@ -25,7 +25,7 @@ fn string<'i>() -> Parsed<'i, &'i str> {
 
 fn doc<'i>() -> Parsed<'i, String> {
     text::inline_whitespace() // indentation
-        .ignore_then(just('#'))
+        .ignore_then(just('#').then_ignore(text::inline_whitespace().or_not()))
         .ignore_then(
             any()
                 .and_is(text::newline().not())

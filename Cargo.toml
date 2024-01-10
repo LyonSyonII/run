@@ -1,3 +1,5 @@
+cargo-features = ["codegen-backend"]
+
 [package]
 name = "runfile"
 version = "0.1.0"
@@ -11,6 +13,17 @@ path = "src/main.rs"
 
 [dependencies]
 ariadne = "0.4.0"
+beef = { version = "0.5.2", features = ["const_fn"] }
 chumsky = { version = "1.0.0-alpha.6", features = ["label"] }
 colored = "2.1.0"
 momo = "0.2.2"
+
+[profile.dev]
+codegen-backend = "cranelift"
+
+[profile.release]
+opt-level = "z"     # Optimize for size.
+lto = true          # Enable Link Time Optimization
+codegen-units = 1   # Reduce number of codegen units to increase optimizations.
+panic = "abort"     # Abort on panic
+strip = true        # Automatically strip symbols from the binary.

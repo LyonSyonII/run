@@ -3,7 +3,7 @@ use std::{io::Write, str::FromStr};
 
 use colored::{Color, Colorize as _};
 
-use crate::{strlist::StrList, utils::Goodbye};
+use crate::{strlist::{StrList, StrListSlice, Str}, utils::Goodbye};
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Command<'i> {
@@ -31,9 +31,9 @@ impl<'i> Command<'i> {
         }
     }
 
-    pub fn usage(&self, parents: &StrList) -> String {
+    pub fn usage(&self, parents: StrListSlice) -> String {
         let usage = "Usage:".bold();
-        let parents = parents.as_slice().color(Color::Cyan).bold();
+        let parents = parents.color(Color::Cyan).bold();
         let name = self.name.cyan().bold();
         let args = self
             .args
@@ -48,20 +48,20 @@ impl<'i> Command<'i> {
         fmt!("{usage} {parents} {name} {args}")
     }
 
-    pub fn doc(&self, parents: &StrList) -> std::borrow::Cow<'_, str> {
-        let mut lines = self.doc.lines().collect::<Vec<_>>();
-        let last = lines.last().cloned().unwrap_or_default();
+    pub fn doc(&'i self, parents: StrListSlice) -> StrList<'i> {
+        let lines = StrList::from(("\n", self.doc.lines()));
+        let last = lines.last().unwrap_or_default();
         if !last.starts_with("Usage:") {
             let usage = self.usage(parents);
-            lines.push(&usage);
-            lines.join("\n").into()
+            lines.append(usage)
         } else {
-            std::borrow::Cow::Borrowed(&self.doc)
+            lines
         }
     }
 
-    #[momo::momo]
-    pub fn run(&self, parents: &StrList, args: impl AsRef<[String]>) -> std::io::Result<()> {
+
+    pub fn run(&self, parents: StrListSlice, args: impl AsRef<[String]>) -> std::io::Result<()> {
+        let args = args.as_ref();
         let name = self.name;
         if args.iter().any(|a| a == "--help" || a == "-h") {
             println!("{}", self.doc);
@@ -91,7 +91,7 @@ impl<'i> Command<'i> {
             let name = fmt!("${name}");
             script = script.replace(&name, arg);
         }
-        script = script.replace("$doc", &self.doc(parents));
+        script = script.replace("$doc", &self.doc(parents).to_string());
         script = script.replace("$usage", &self.usage(parents));
 
         let cmd = match self.lang {
