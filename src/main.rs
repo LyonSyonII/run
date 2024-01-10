@@ -38,7 +38,7 @@ fn main() -> std::io::Result<()> {
         .unwrap_or(std::ffi::OsStr::new("run"));
     let args = std::env::args().skip(1).collect::<Vec<_>>();
     runfile
-        .run((" ", [exe_name.to_string_lossy()]), args)
+        .run((" ", [exe_name.to_string_lossy()]), &args)
         .unwrap();
 
     Ok(())

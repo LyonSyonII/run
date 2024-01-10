@@ -73,6 +73,7 @@ impl<'i> Command<'i> {
         }
 
         if args.len() < self.args.len() {
+            // TODO: Make output prettier
             eprintln!(
                 "run {name}: Expected arguments {:?}, got {:?}",
                 self.args, args
@@ -107,17 +108,7 @@ impl<'i> Command<'i> {
                 ":".red()
             );
             eprintln!("{e}");
-            return Ok(());
         }
-
-        /*         let mut cmd = std::process::Command::new(cmd)
-            .stdin(std::process::Stdio::piped())
-            // .args(args.get(self.args.len()..).unwrap_or_default())
-            .spawn()?;
-        cmd.stdin
-            .as_mut()
-            .bye("ERROR: Could not take stdin")
-            .write_all(script.as_bytes())?; */
 
         Ok(())
     }
