@@ -50,7 +50,7 @@ impl Language {
 }
 
 pub(crate) fn exe_not_found(exe: &str, error: which::Error) -> Str<'_> {
-    let exe = format!("`{}`", exe).bright_purple().bold();
+    let exe = format!("'{}'", exe).bright_purple().bold();
     Str::from(format!(
         "{exe} {}\n\nComplete error: {error}",
         "executable could not be found.\nDo you have it installed and in the PATH?"
@@ -60,7 +60,7 @@ pub(crate) fn exe_not_found(exe: &str, error: which::Error) -> Str<'_> {
 }
 
 pub(crate) fn execution_failed(exe: &str, error: std::io::Error) -> Str<'_> {
-    let exe = format!("`{}`", exe).bright_purple().bold();
+    let exe = format!("'{}'", exe).bright_purple().bold();
     Str::from(format!(
         "{exe} {}\n\nComplete error: {error}",
         "failed to execute command".bright_purple().bold()

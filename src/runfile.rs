@@ -33,7 +33,7 @@ impl<'i> Runfile<'i> {
 
     pub fn doc(&self, name: impl AsRef<str>, parents: StrListSlice) -> StrList<'_> {
         let name = name.as_ref();
-        let parents = parents.color(Color::Cyan).bold();
+        let parents = parents.color(Color::BrightCyan).bold();
         let (name, usage) = if name.is_empty() {
             // Main
             (None, "Usage:".bright_green().bold())
@@ -66,7 +66,7 @@ impl<'i> Runfile<'i> {
         to: &mut impl std::io::Write,
     ) -> Result<(), Str<'_>> {
         let op = |e: std::io::Error| Str::from(e.to_string());
-
+        
         writeln!(to, "{}", "Commands:".bright_green().bold()).map_err(op)?;
         let mut commands = self.commands.values().collect::<Vec<_>>();
         commands.sort_by(|a, b| {
@@ -162,7 +162,7 @@ impl<'i> Runfile<'i> {
         let Some(first) = first.map(String::as_str) else {
             let Some(cmd) = self.commands.get("default") else {
                 self.print_help(
-                    "ERROR: No command specified and no default command found".bright_red(),
+                    "Error: No command specified and no default command found".bright_red().bold(),
                     parents.as_slice(),
                 )?;
                 return Ok(());

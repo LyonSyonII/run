@@ -38,7 +38,7 @@ impl<'i> Command<'i> {
 
     pub fn usage(&self, parents: StrListSlice) -> String {
         let usage = "Usage:".bold();
-        let parents = parents.color(Color::Cyan).bold();
+        let parents = parents.color(Color::BrightCyan).bold();
         let name = self.name.bright_cyan().bold();
         let args = self
             .args

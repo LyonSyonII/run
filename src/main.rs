@@ -17,7 +17,7 @@ fn main() -> std::io::Result<()> {
     
     if args.first().is_some_and_oneof(["-h", "--help"]) {
         println!("Runs a runfile in the current directory");
-        println!("Possible runfile names: [run, runfile] or any ending in `.run`\n");
+        println!("Possible runfile names: [run, runfile] or any ending in '.run'\n");
         println!("{} {} {}\n", "Usage:".bright_green().bold(), "run".bright_cyan().bold(), "[COMMAND] [ARGS...]".cyan());
         println!("{}", "Options:".bright_green().bold());
         println!("  {}, {}\t\tPrints help information", "-h".bright_cyan().bold(), "--help".bright_cyan().bold());
