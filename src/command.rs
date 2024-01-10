@@ -39,7 +39,7 @@ impl<'i> Command<'i> {
     pub fn usage(&self, parents: StrListSlice) -> String {
         let usage = "Usage:".bold();
         let parents = parents.color(Color::Cyan).bold();
-        let name = self.name.cyan().bold();
+        let name = self.name.bright_cyan().bold();
         let args = self
             .args
             .iter()
@@ -78,7 +78,7 @@ impl<'i> Command<'i> {
                 "run {name}: Expected arguments {:?}, got {:?}",
                 self.args, args
             );
-            eprintln!("See `run {name} --help` for more information");
+            eprintln!("See 'run {name} --help' for more information");
             std::process::exit(1);
         }
 
@@ -102,10 +102,10 @@ impl<'i> Command<'i> {
         if let Err(e) = self.lang.execute(&script) {
             eprintln!(
                 "{} {} {}{}",
-                "Error running".red(),
+                "Error running".bright_red(),
                 parents.color(Color::Red).bold(),
-                name.red().bold(),
-                ":".red()
+                name.bright_red().bold(),
+                ":".bright_red()
             );
             eprintln!("{e}");
         }

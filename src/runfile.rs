@@ -36,10 +36,10 @@ impl<'i> Runfile<'i> {
         let parents = parents.color(Color::Cyan).bold();
         let (name, usage) = if name.is_empty() {
             // Main
-            (None, "Usage:".green().bold())
+            (None, "Usage:".bright_green().bold())
         } else {
             // Subcommand
-            (Some(name.to_string().cyan().bold()), "Usage:".bold())
+            (Some(name.to_string().bright_cyan().bold()), "Usage:".bold())
         };
 
         let lines: StrList = ("\n", self.doc.lines()).into();
@@ -67,7 +67,7 @@ impl<'i> Runfile<'i> {
     ) -> Result<(), Str<'_>> {
         let op = |e: std::io::Error| Str::from(e.to_string());
 
-        writeln!(to, "{}", "Commands:".green().bold()).map_err(op)?;
+        writeln!(to, "{}", "Commands:".bright_green().bold()).map_err(op)?;
         let mut commands = self.commands.values().collect::<Vec<_>>();
         commands.sort_by(|a, b| {
             if a.name == "default" {
@@ -81,7 +81,7 @@ impl<'i> Runfile<'i> {
             let mut lines = doc.into_iter();
 
             let first = lines.next().unwrap();
-            writeln!(to, "    {:indent$}   {}", cmd.name.cyan().bold(), first).map_err(op)?;
+            writeln!(to, "    {:indent$}   {}", cmd.name.bright_cyan().bold(), first).map_err(op)?;
             for l in lines {
                 writeln!(to, "    {:indent$}   {}", "", l).map_err(op)?;
             }
@@ -102,7 +102,7 @@ impl<'i> Runfile<'i> {
 
         let op = |e: std::io::Error| Str::from(e.to_string());
 
-        writeln!(to, "{}", "Subcommands:".green().bold()).map_err(op)?;
+        writeln!(to, "{}", "Subcommands:".bright_green().bold()).map_err(op)?;
         let mut subcommands = self.subcommands.iter().collect::<Vec<_>>();
         subcommands.sort_unstable_by(|(n1, _), (n2, _)| n1.cmp(n2));
         for (name, sub) in subcommands {
@@ -111,7 +111,7 @@ impl<'i> Runfile<'i> {
             writeln!(
                 to,
                 "    {}   {}",
-                name.cyan().bold(),
+                name.bright_cyan().bold(),
                 doc.pop_front().unwrap()
             )
             .map_err(op)?;
@@ -150,15 +150,7 @@ impl<'i> Runfile<'i> {
 
         let first = args.first();
 
-        if first.is_some_and_oneof(["-h", "--help"]) {
-            println!("Runs a runfile in the current directory");
-            println!("Possible runfile names: [runfile, run, Runfile, Run]\n");
-            println!("Usage: run [COMMAND] [ARGS...]\n");
-            println!("Options:");
-            println!("  -h, --help\t\tPrints help information");
-            println!("  -c, --commands\tPrints available commands in the runfile");
-            return Ok(());
-        } else if first.is_some_and_oneof(["-c", "--commands"]) {
+        if first.is_some_and_oneof(["-c", "--commands"]) {
             let indent = self.calculate_indent();
             let stdout = std::io::stdout();
             let mut stdout = stdout.lock();
@@ -170,7 +162,7 @@ impl<'i> Runfile<'i> {
         let Some(first) = first.map(String::as_str) else {
             let Some(cmd) = self.commands.get("default") else {
                 self.print_help(
-                    "ERROR: No command specified and no default command found".red(),
+                    "ERROR: No command specified and no default command found".bright_red(),
                     parents.as_slice(),
                 )?;
                 return Ok(());
@@ -187,7 +179,7 @@ impl<'i> Runfile<'i> {
             sub.run(parents.append(first), args.get(1..).unwrap_or_default())
         } else {
             self.print_help(
-                f!("ERROR: Could not find command or subcommand: {}", first).red(),
+                f!("ERROR: Could not find command or subcommand: {}", first).bright_red(),
                 parents.as_slice(),
             )?;
             std::process::exit(1);

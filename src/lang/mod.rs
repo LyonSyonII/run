@@ -17,6 +17,56 @@ pub enum Language {
     Javascript,
 }
 
+impl Language {
+    pub fn to_str(self) -> &'static str {
+        match self {
+            Self::Shell => "sh",
+            Self::Bash => "bash",
+            Self::Rust => "rs",
+            Self::Python => "py",
+            Self::Javascript => "js",
+        }
+    }
+
+    pub fn execute(self, input: &str) -> Result<(), Str<'_>> {
+        match self {
+            Language::Shell => shell::execute(input),
+            Language::Bash => bash::execute(input),
+            Language::Rust => rust::execute(input),
+            Language::Python => python::execute(input),
+            Language::Javascript => javascript::execute(input),
+        }
+    }
+
+    pub fn installed(self) -> bool {
+        match self {
+            Language::Shell => shell::installed(),
+            Language::Bash => bash::installed(),
+            Language::Rust => rust::installed(),
+            Language::Python => python::installed(),
+            Language::Javascript => javascript::installed(),
+        }
+    }
+}
+
+pub(crate) fn exe_not_found(exe: &str, error: which::Error) -> Str<'_> {
+    let exe = format!("`{}`", exe).bright_purple().bold();
+    Str::from(format!(
+        "{exe} {}\n\nComplete error: {error}",
+        "executable could not be found.\nDo you have it installed and in the PATH?"
+            .bright_purple()
+            .bold(),
+    ))
+}
+
+pub(crate) fn execution_failed(exe: &str, error: std::io::Error) -> Str<'_> {
+    let exe = format!("`{}`", exe).bright_purple().bold();
+    Str::from(format!(
+        "{exe} {}\n\nComplete error: {error}",
+        "failed to execute command".bright_purple().bold()
+    ))
+}
+
 impl std::str::FromStr for Language {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -29,26 +79,4 @@ impl std::str::FromStr for Language {
             _ => Err(format!("Unknown language '{s}'; expected one of [cmd, fn, sh, shell, bash, rs, rust, py, python, js, javascript]")),
         }
     }
-}
-
-impl Language {
-    pub fn execute(self, input: &str) -> Result<(), Str<'_>> {
-        match self {
-            Language::Shell => shell::execute(input),
-            Language::Bash => bash::execute(input),
-            Language::Rust => rust::execute(input),
-            Language::Python => python::execute(input),
-            Language::Javascript => javascript::execute(input),
-        }
-    }
-}
-
-pub(crate) fn exe_not_found(exe: &str, error: impl std::error::Error) -> Str<'_> {
-    let exe = format!("`{}`", exe).purple().bold();
-    Str::from(format!(
-        "{exe} {}\n\nComplete error: {error}",
-        "executable could not be found.\nDo you have it installed and in the PATH?"
-            .purple()
-            .bold(),
-    ))
 }
