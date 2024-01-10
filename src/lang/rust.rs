@@ -12,7 +12,7 @@ pub(crate) fn program() -> Result<std::path::PathBuf, Str<'static>> {
 
 pub(crate) fn execute(input: &str) -> Result<(), Str<'_>> {
     let to_error = |e: std::io::Error| Str::from(e.to_string());
-    
+
     let mut child = std::process::Command::new(program()?)
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())

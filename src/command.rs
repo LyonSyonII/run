@@ -52,7 +52,7 @@ impl<'i> Command<'i> {
         }
         fmt!("{:\n<newlines$}{usage} {parents} {name} {args}", "")
     }
-    
+
     pub fn doc(&'i self, parents: StrListSlice) -> StrList<'i> {
         let lines = StrList::from(("\n", self.doc.lines()));
         let last = lines.last().unwrap_or_default();
@@ -64,10 +64,15 @@ impl<'i> Command<'i> {
         }
     }
 
-    pub fn print_help(&self, parents: StrListSlice, indent: usize, to: &mut impl Write) -> std::io::Result<()> {
+    pub fn print_help(
+        &self,
+        parents: StrListSlice,
+        indent: usize,
+        to: &mut impl Write,
+    ) -> std::io::Result<()> {
         let lines = StrList::from(("\n", self.doc.lines()));
         let usage = self.usage(parents, Color::BrightGreen, !lines.is_empty() as usize);
-        
+
         for l in lines.append(usage) {
             writeln!(to, "{:indent$}{l}", "")?;
         }
@@ -75,7 +80,12 @@ impl<'i> Command<'i> {
         Ok(())
     }
 
-    pub fn run(&self, parents: StrListSlice, args: impl AsRef<[String]>, runfile_docs: impl Fn(&mut Vec<u8>)) -> std::io::Result<()> {
+    pub fn run(
+        &self,
+        parents: StrListSlice,
+        args: impl AsRef<[String]>,
+        runfile_docs: impl Fn(&mut Vec<u8>),
+    ) -> std::io::Result<()> {
         let args = args.as_ref();
         let name = self.name;
         if args.iter().any(|a| a == "--help" || a == "-h") {
@@ -84,7 +94,12 @@ impl<'i> Command<'i> {
         }
 
         if args.len() < self.args.len() {
-            let error = format!("{parents} {name}: Expected arguments {:?}, got {:?}", self.args, args).bright_red().bold();
+            let error = format!(
+                "{parents} {name}: Expected arguments {:?}, got {:?}",
+                self.args, args
+            )
+            .bright_red()
+            .bold();
             eprintln!("{error}");
             let help = format!("{parents} {name} --help").bold().bright_cyan();
             eprintln!("See '{help}' for more information");
@@ -105,11 +120,11 @@ impl<'i> Command<'i> {
             let name = fmt!("${name}");
             script = script.replace(&name, arg);
         }
-        
+
         let runfile_docs = {
             let mut buf = Vec::new();
             runfile_docs(&mut buf);
-            String::from_utf8(buf).unwrap() 
+            String::from_utf8(buf).unwrap()
         };
 
         script = script.replace("$doc", &runfile_docs);

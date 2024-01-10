@@ -50,11 +50,11 @@ impl<'i> Runfile<'i> {
 
         let usage = if let Some(name) = name {
             f!(
-                "{usage} {parents} {name} {}\n",
+                "{usage} {parents} {name} {}",
                 "[COMMAND] [ARGS...]".cyan()
             )
         } else {
-            f!("{usage} {parents} {}\n", "[COMMAND] [ARGS...]".cyan())
+            f!("{usage} {parents} {}", "[COMMAND] [ARGS...]".cyan())
         };
         lines.append(usage)
     }
@@ -66,7 +66,7 @@ impl<'i> Runfile<'i> {
         to: &mut (impl std::io::Write + ?Sized),
     ) -> Result<(), Str<'_>> {
         let op = |e: std::io::Error| Str::from(e.to_string());
-        
+
         writeln!(to, "{}", "Commands:".bright_green().bold()).map_err(op)?;
         let mut commands = self.commands.values().collect::<Vec<_>>();
         commands.sort_by(|a, b| {
@@ -79,9 +79,15 @@ impl<'i> Runfile<'i> {
         for cmd in commands {
             let doc = cmd.doc(parents);
             let mut lines = doc.into_iter();
-            
+
             let first = lines.next().unwrap();
-            writeln!(to, "    {:indent$}   {}", cmd.name.bright_cyan().bold(), first).map_err(op)?;
+            writeln!(
+                to,
+                "    {:indent$}   {}",
+                cmd.name.bright_cyan().bold(),
+                first
+            )
+            .map_err(op)?;
             for l in lines {
                 writeln!(to, "    {:indent$}   {}", "", l).map_err(op)?;
             }
@@ -142,6 +148,9 @@ impl<'i> Runfile<'i> {
             writeln!(to, "{}", msg).map_err(op)?;
         }
         writeln!(to, "{}", self.doc("", parents)).map_err(op)?;
+        if !self.commands.is_empty() || !self.subcommands.is_empty() {
+            writeln!(to).map_err(op)?;
+        }
         self.print_commands(parents, indent, to)?;
         self.print_subcommands(parents, indent, to)?;
 
@@ -156,6 +165,7 @@ impl<'i> Runfile<'i> {
         let parents = parents.into();
 
         let first = args.first();
+        // Needed for subcommands
         if first.is_some_and_oneof(["-h", "--help"]) {
             self.print_help("", parents.as_slice(), &mut std::io::stdout())?;
             return Ok(());
@@ -170,15 +180,19 @@ impl<'i> Runfile<'i> {
         }
 
         let runfile_docs = |to: &mut Vec<u8>| {
-            self.print_help("", parents.as_slice(), to).unwrap_or_default()
+            self.print_help("", parents.as_slice(), to)
+                .unwrap_or_default()
         };
 
         let Some(first) = first.map(String::as_str) else {
             let Some(cmd) = self.commands.get("default") else {
                 self.print_help(
-                    "Error: No command specified and no default command found".bright_red().bold().to_string(),
+                    "Error: No command specified and no default command found"
+                        .bright_red()
+                        .bold()
+                        .to_string(),
                     parents.as_slice(),
-                    &mut std::io::stderr()
+                    &mut std::io::stderr(),
                 )?;
                 return Ok(());
             };
@@ -188,15 +202,21 @@ impl<'i> Runfile<'i> {
         };
 
         if let Some(cmd) = self.commands.get(first) {
-            cmd.run(parents.as_slice(), args.get(1..).unwrap_or_default(), runfile_docs)
-                .map_err(|e| f!("Command execution failed: {}", e).into())
+            cmd.run(
+                parents.as_slice(),
+                args.get(1..).unwrap_or_default(),
+                runfile_docs,
+            )
+            .map_err(|e| f!("Command execution failed: {}", e).into())
         } else if let Some(sub) = self.subcommands.get(first) {
             sub.run(parents.append(first), args.get(1..).unwrap_or_default())
         } else {
             self.print_help(
-                f!("ERROR: Could not find command or subcommand: {}", first).bright_red().to_string(),
+                f!("ERROR: Could not find command or subcommand: {}", first)
+                    .bright_red()
+                    .to_string(),
                 parents.as_slice(),
-                &mut std::io::stderr()
+                &mut std::io::stderr(),
             )?;
             std::process::exit(1);
         }

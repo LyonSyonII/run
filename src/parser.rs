@@ -73,7 +73,6 @@ fn body<'i>() -> Parsed<'i, &'i str> {
             just('{').then(body).then(just('}')).to_slice(),
         ))
         .repeated()
-        // .lazy()
         .to_slice()
     });
 
@@ -106,14 +105,10 @@ fn command<'i>() -> Parsed<'i, (&'i str, Command<'i>)> {
 
 fn subcommand<'i>(runfile: Parsed<'i, Runfile<'i>>) -> Parsed<'i, (&'i str, Runfile<'i>)> {
     doc()
-        .then_ignore(just('\n').not())
-        .expect("documentation must be adjacent to a command")
-        .then_ignore(text::keyword("sub").expect("expected 'sub'"))
-        .padded()
-        .then(text::ident().expect("expected subcommand name"))
-        .padded()
+        .then_ignore(text::keyword("sub").padded().expect("expected 'sub'"))
+        .then(text::ident().padded().expect("expected subcommand name"))
         .then_ignore(just('{').expect("expected '{'"))
-        .then(runfile)
+        .then(runfile.padded())
         .then_ignore(just('}').expect("expected '}'"))
         .map(|((doc, name), runfile): ((String, &str), Runfile)| (name, runfile.with_doc(doc)))
         .boxed()
@@ -130,6 +125,7 @@ fn include<'i>() -> Parsed<'i, (&'i str, Runfile<'i>)> {
                 return ("", Runfile::default());
             };
 
+            // TODO: Protect against circular includes
             // TODO: Remove leak (although string is alive until the end of the program, so it shouldn't be a problem)
             let file = match std::fs::read_to_string(path) {
                 Ok(s) => s.leak(),
@@ -165,6 +161,7 @@ pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
     }
 
     recursive(|runfile| {
+        // TODO: Add support for comments
         choice((
             include().map(Results::Include),
             subcommand(runfile.boxed()).map(Results::Subcommand),
@@ -186,7 +183,9 @@ pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
                         acc
                     }
                     Results::Include((path, include)) => {
+                        // TODO: Avoid clones
                         acc.commands.extend(include.commands.clone());
+                        acc.subcommands.extend(include.subcommands.clone());
                         acc.includes.insert(path, include);
                         acc
                     }
