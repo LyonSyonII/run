@@ -20,12 +20,11 @@ where
 {
     /// Unwraps the contained value.<br>
     /// If unwrapping fails, prints `msg` and exits with code 1.
-    #[momo::momo]
     fn bye(self, msg: impl AsRef<str>) -> T {
         if let Some(t) = self.check() {
             return t;
         }
-        eprintln!("{}", msg);
+        eprintln!("{}", msg.as_ref());
         std::process::exit(1)
     }
 
@@ -78,7 +77,7 @@ pub trait OptionExt<T> {
     #[allow(clippy::wrong_self_convention)] // `is_some_and` takes `self` by value
     fn is_some_and_oneof<U>(self, of: impl AsRef<[U]>) -> bool
     where
-        for<'a> &'a U: PartialEq<T>;
+        T: PartialEq<U>;
 
     fn drop_and<U>(self, and: U) -> Option<U>;
 }
@@ -86,9 +85,9 @@ pub trait OptionExt<T> {
 impl<T> OptionExt<T> for Option<T> {
     fn is_some_and_oneof<U>(self, of: impl AsRef<[U]>) -> bool
     where
-        for<'a> &'a U: PartialEq<T>,
+        T: PartialEq<U>,
     {
-        self.is_some_and(|s| of.as_ref().iter().any(|o| o == s))
+        self.is_some_and(|t| of.as_ref().iter().any(|u| t.eq(u)))
     }
 
     /// Returns `Some(T)` if `self` is `None`, otherwise returns `None`.

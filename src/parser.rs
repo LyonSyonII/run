@@ -91,10 +91,9 @@ fn fn_ident<'i>() -> Parsed<'i, &'i str> {
         // This error never appears due to `repeated` so can use `filter`
         .filter(|c: &char| c.is_ident_continue() || *c == '-')
         .repeated();
-    
+
     start.then(next).to_slice().boxed()
 }
-
 
 fn args<'i>() -> Parsed<'i, Vec<&'i str>> {
     fn_ident()
@@ -123,7 +122,7 @@ fn body<'i>() -> Parsed<'i, &'i str> {
     just('{')
         .ignore_then(body)
         .then_ignore(just('}'))
-        .map(|b: &str| b.trim())
+        // .map(|b: &str| b.trim()) TODO: Check if it really needs to be removed
         .boxed()
 }
 

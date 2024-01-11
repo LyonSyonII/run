@@ -169,6 +169,7 @@ impl<'i> Runfile<'i> {
             let mut stdout = stdout.lock();
             self.print_commands(parents.as_slice(), indent, &mut stdout)?;
             self.print_subcommands(parents.as_slice(), indent, &mut stdout)?;
+            stdout.flush().unwrap();
             return Ok(());
         }
 

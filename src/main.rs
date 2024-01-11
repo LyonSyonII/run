@@ -13,14 +13,14 @@ mod strlist;
 mod utils;
 
 fn main() -> std::io::Result<()> {
-    let args = std::env::args().skip(1).collect::<Vec<_>>();
+    let mut args = std::env::args().skip(1).collect::<Vec<_>>();
 
     if args.first().is_some_and_oneof(["-h", "--help"]) {
         print_help();
         return Ok(());
     };
 
-    let (file, input) = get_file();
+    let (file, input) = get_file(&mut args);
     let runfile = match parser::runfile().parse(&input).into_result() {
         Ok(r) => r,
         Err(errors) => {
@@ -47,14 +47,20 @@ fn print_help() {
     );
     println!("{}", "Options:".bright_green().bold());
     println!(
-        "  {}, {}\t\tPrints help information",
-        "-h".bright_cyan().bold(),
-        "--help".bright_cyan().bold()
+        "  {}, {} {}\tRuns the specified file instead of searching for a runfile",
+        "-f".bright_cyan().bold(),
+        "--file".bright_cyan().bold(),
+        "<FILE>".cyan()
     );
     println!(
         "  {}, {}\tPrints available commands in the runfile",
         "-c".bright_cyan().bold(),
         "--commands".bright_cyan().bold()
+    );
+    println!(
+        "  {}, {}\t\tPrints help information",
+        "-h".bright_cyan().bold(),
+        "--help".bright_cyan().bold()
     );
 }
 
@@ -82,7 +88,39 @@ fn print_errors<'a>(
     Ok(())
 }
 
-fn get_file() -> (Str<'static>, String) {
+fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
+    if let Some(file) = read_pipe::read_pipe() {
+        return ("stdin".into(), file);
+    }
+
+    let first = args.first();
+    if first.is_some_and_oneof(["-f", "--file"]) {
+        let file = args.get(1);
+        if let Some(file) = file {
+            if let Ok(contents) = std::fs::read_to_string(file) {
+                let file = file.to_owned().into();
+                // Remove -f and the file name
+                args.drain(..=1);
+                return (file, contents);
+            }
+
+            let err = format!("Error: Could not read file '{}'", file)
+                .bright_red()
+                .bold();
+            eprintln!("{}", err);
+            std::process::exit(1);
+        }
+
+        eprintln!(
+            "{}\n{} {} {}",
+            "Error: No file specified".bright_red().bold(),
+            "Usage:".bright_green().bold(),
+            "run --file <FILE>".bright_cyan().bold(),
+            "[COMMAND] [ARGS...]".cyan()
+        );
+        std::process::exit(1);
+    }
+    
     let files = [
         "runfile",
         "run",
