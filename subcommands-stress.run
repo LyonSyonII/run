@@ -1,6 +1,6 @@
 
 sub sub {
-    in "./include.run"
+    in ./include.run
 
     cmd default() {
         echo "Hello from a subcommand!"
@@ -8,7 +8,7 @@ sub sub {
 
     /// This is a subcommand inside a subcommand
     sub subsub {
-        in "./include.run"
+        in ./include.run
         
         cmd default() {
             echo "Hello from a subsubcommand!"
@@ -16,7 +16,7 @@ sub sub {
 
         /// This is a subcommand inside a subcommand inside a subcommand
         sub subsubsub {
-            in "./include.run"
+            in ./include.run
 
             cmd default() {
                 echo "Hello from a subsubsubcommand!"
@@ -24,7 +24,7 @@ sub sub {
 
             /// This is a subcommand inside a subcommand inside a subcommand inside a subcommand
             sub subsubsubsub {
-                in "./include.run"
+                in ./include.run
 
                 cmd default() {
                     echo "Hello from a subsubsubsubcommand!"
@@ -32,7 +32,7 @@ sub sub {
 
                 /// This is a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand
                 sub subsubsubsubsub {
-                    in "./include.run"
+                    in ./include.run
 
                     cmd default() {
                         echo "Hello from a subsubsubsubsubcommand!"
@@ -40,7 +40,7 @@ sub sub {
 
                     /// This is a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand
                     sub subsubsubsubsubsub {
-                        in "./include.run"
+                        in ./include.run
 
                         cmd default() {
                             echo "Hello from a subsubsubsubsubsubcommand!"
@@ -48,7 +48,7 @@ sub sub {
 
                         /// This is a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand
                         sub subsubsubsubsubsubsub {
-                            in "./include.run"
+                            in ./include.run
 
                             cmd default() {
                                 echo "Hello from a subsubsubsubsubsubsubcommand!"
@@ -56,7 +56,7 @@ sub sub {
 
                             /// This is a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand
                             sub subsubsubsubsubsubsubsub {
-                                in "./include.run"
+                                in ./include.run
 
                                 cmd default() {
                                     echo "Hello from a subsubsubsubsubsubsubsubcommand!"
@@ -64,7 +64,7 @@ sub sub {
 
                                 /// This is a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand
                                 sub subsubsubsubsubsubsubsubsub {
-                                    in "./include.run"
+                                    in ./include.run
 
                                     cmd default() {
                                         echo "Hello from a subsubsubsubsubsubsubsubsubcommand!"
@@ -72,7 +72,7 @@ sub sub {
 
                                     /// This is a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand
                                     sub subsubsubsubsubsubsubsubsubsub {
-                                        in "./include.run"
+                                        in ./include.run
 
                                         cmd default() {
                                             echo "Hello from a subsubsubsubsubsubsubsubsubsubcommand!"
@@ -80,7 +80,7 @@ sub sub {
 
                                         /// This is a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand
                                         sub subsubsubsubsubsubsubsubsubsubsub {
-                                            in "./include.run"
+                                            in ./include.run
 
                                             cmd default() {
                                                 echo "Hello from a subsubsubsubsubsubsubsubsubsubsubcommand!"
@@ -88,7 +88,7 @@ sub sub {
 
                                             /// This is a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand
                                             sub subsubsubsubsubsubsubsubsubsubsubsub {
-                                                in "./include.run"
+                                                in ./include.run
 
                                                 cmd default() {
                                                     echo "Hello from a subsubsubsubsubsubsubsubsubsubsubsubcommand!"
@@ -96,7 +96,7 @@ sub sub {
 
                                                 /// This is a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand
                                                 sub subsubsubsubsubsubsubsubsubsubsubsubsub {
-                                                    in "./include.run"
+                                                    in ./include.run
 
                                                     cmd default() {
                                                         echo "Hello from a subsubsubsubsubsubsubsubsubsubsubsubsubcommand!"
@@ -104,7 +104,7 @@ sub sub {
 
                                                     /// This is a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand inside a subcommand
                                                     sub subsubsubsubsubsubsubsubsubsubsubsubsubsub {
-                                                        in "./include.run"
+                                                        in ./include.run
 
                                                         cmd default() {
                                                             echo "Hello from a subsubsubsubsubsubsubsubsubsubsubsubsubsubcommand!"
