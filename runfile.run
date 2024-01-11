@@ -66,10 +66,3 @@ sub sub-with-included {
   in ./included command.run
   in ./included-subcommand.run
 }
-
-py cmd generate() {
-  f = open("generated.run", "w")
-  for i in range(2_000_000):
-    f.write(f"cmd cmd{i}() {{ echo {i}; }}\n")
-  f.close()
-}

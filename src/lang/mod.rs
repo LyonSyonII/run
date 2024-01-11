@@ -59,7 +59,7 @@ pub(crate) fn exe_not_found(exe: &str, error: which::Error) -> Str<'_> {
     ))
 }
 
-pub(crate) fn execution_failed(exe: &str, error: std::io::Error) -> Str<'_> {
+pub(crate) fn execution_failed(exe: &str, error: impl std::fmt::Display) -> Str<'_> {
     let exe = format!("'{}'", exe).bright_purple().bold();
     Str::from(format!(
         "{exe} {}\n\nComplete error: {error}",

@@ -133,8 +133,8 @@ impl<'i> Command<'i> {
 
         if let Err(e) = self.lang.execute(&script) {
             eprintln!(
-                "{} {} {}{}",
-                "Error running".bright_red(),
+                "{} {} {}{}\n",
+                "Error running".bright_red().bold(),
                 parents.color(Color::Red).bold(),
                 name.bright_red().bold(),
                 ":".bright_red()
