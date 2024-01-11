@@ -12,6 +12,7 @@ name = "run"
 path = "src/main.rs"
 
 [dependencies]
+app_dirs2 = "2.5.5"
 ariadne = "0.4.0"
 beef = { version = "0.5.2", features = ["const_fn"] }
 chumsky = { version = "1.0.0-alpha.6", features = ["label"] }

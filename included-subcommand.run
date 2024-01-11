@@ -1,0 +1,7 @@
+/// This is a subcommand included from another file
+sub included-sub {
+  /// This is a command in the included subcommand
+  cmd default() {
+    echo "I've been included from another file!"
+  }
+}
