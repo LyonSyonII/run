@@ -1,3 +1,19 @@
+pub(self) trait Check<T> {
+    fn check(self) -> Option<T>
+    where
+        Self: Sized;
+}
+
+impl Check<()> for bool {
+    fn check(self) -> Option<()> {
+        if self {
+            Some(())
+        } else {
+            None
+        }
+    }
+}
+
 pub trait Goodbye<T>
 where
     Self: Sized,
@@ -63,6 +79,8 @@ pub trait OptionExt<T> {
     fn is_some_and_oneof<U>(self, of: impl AsRef<[U]>) -> bool
     where
         for<'a> &'a U: PartialEq<T>;
+
+    fn drop_and<U>(self, and: U) -> Option<U>;
 }
 
 impl<T> OptionExt<T> for Option<T> {
@@ -72,4 +90,42 @@ impl<T> OptionExt<T> for Option<T> {
     {
         self.is_some_and(|s| of.as_ref().iter().any(|o| o == s))
     }
+
+    /// Returns `Some(T)` if `self` is `None`, otherwise returns `None`.
+    fn drop_and<U>(self, and: U) -> Option<U> {
+        if self.is_some() {
+            None
+        } else {
+            Some(and)
+        }
+    }
 }
+
+pub trait BoolExt: Check<()>
+where
+    Self: Sized,
+{
+    fn and<T>(self, and: T) -> Option<T> {
+        if self.check().is_some() {
+            Some(and)
+        } else {
+            None
+        }
+    }
+    fn and_or<T>(self, and: T, or: T) -> T {
+        if self.check().is_some() {
+            and
+        } else {
+            or
+        }
+    }
+    fn and_ok_or<T, E>(self, ok: T, or: E) -> Result<T, E> {
+        if self.check().is_some() {
+            Ok(ok)
+        } else {
+            Err(or)
+        }
+    }
+}
+
+impl BoolExt for bool {}

@@ -1,5 +1,5 @@
-use crate::{command::Command, lang::Language, runfile::Runfile};
-use chumsky::prelude::*;
+use crate::{command::Command, lang::Language, runfile::Runfile, utils::BoolExt as _};
+use chumsky::{prelude::*, text::Char as _};
 pub use std::format as fmt;
 
 type Error<'i> = extra::Err<Rich<'i, char>>;
@@ -20,9 +20,34 @@ fn string<'i>() -> Parsed<'i, &'i str> {
         .boxed()
 }
 
+fn line_comment<'i>() -> Parsed<'i, ()> {
+    text::inline_whitespace() // indentation
+        .ignore_then(
+            just("//")
+                .then(just('/').not())
+                .then_ignore(text::inline_whitespace().or_not()),
+        )
+        .ignore_then(any().and_is(text::newline().not()).repeated().to_slice())
+        .separated_by(text::newline())
+        .allow_trailing()
+        .boxed()
+}
+
+fn block_comment<'i>() -> Parsed<'i, ()> {
+    text::inline_whitespace() // indentation
+        .ignore_then(just("/*"))
+        .ignore_then(just("*/").not().repeated())
+        .then_ignore(just("*/"))
+        .boxed()
+}
+
+fn comment<'i>() -> Parsed<'i, ()> {
+    line_comment().or(block_comment()).boxed()
+}
+
 fn doc<'i>() -> Parsed<'i, String> {
     text::inline_whitespace() // indentation
-        .ignore_then(just('#').then_ignore(text::inline_whitespace().or_not()))
+        .ignore_then(just("///").then_ignore(text::inline_whitespace().or_not()))
         .ignore_then(any().and_is(text::newline().not()).repeated().to_slice())
         .separated_by(text::newline())
         .allow_trailing()
@@ -52,8 +77,27 @@ fn language_fn<'i>() -> Parsed<'i, Language> {
         .boxed()
 }
 
+fn fn_ident<'i>() -> Parsed<'i, &'i str> {
+    let start = any()
+        // Use try_map over filter to get a better error on failure
+        .try_map(|c: char, span| {
+            c.is_ident_start().and_ok_or(
+                c,
+                Rich::custom(span, fmt!("an identifier cannot start with {c:?}")),
+            )
+        });
+
+    let next = any()
+        // This error never appears due to `repeated` so can use `filter`
+        .filter(|c: &char| c.is_ident_continue() || *c == '-')
+        .repeated();
+    
+    start.then(next).to_slice().boxed()
+}
+
+
 fn args<'i>() -> Parsed<'i, Vec<&'i str>> {
-    text::ident()
+    fn_ident()
         .separated_by(text::whitespace().at_least(1))
         .allow_trailing()
         .collect()
@@ -86,7 +130,7 @@ fn body<'i>() -> Parsed<'i, &'i str> {
 fn signature<'i>() -> Parsed<'i, (Language, &'i str, Vec<&'i str>)> {
     language_fn()
         .padded()
-        .then(text::ident().padded().expect("expected command name"))
+        .then(fn_ident().padded().labelled("command name"))
         .then(args())
         .map(|((lang, name), args)| (lang, name, args))
         .boxed()
@@ -106,24 +150,29 @@ fn command<'i>() -> Parsed<'i, (&'i str, Command<'i>)> {
 fn subcommand<'i>(runfile: Parsed<'i, Runfile<'i>>) -> Parsed<'i, (&'i str, Runfile<'i>)> {
     doc()
         .then_ignore(text::keyword("sub").padded().expect("expected 'sub'"))
-        .then(text::ident().padded().expect("expected subcommand name"))
+        .then(fn_ident().padded().expect("expected subcommand name"))
         .then_ignore(just('{').expect("expected '{'"))
         .then(runfile.padded())
         .then_ignore(just('}').expect("expected '}'"))
-        .map(|((doc, name), runfile): ((String, &str), Runfile)| (name, runfile.with_doc(doc)))
+        .map(|((doc, name), runfile)| (name, runfile.with_doc(doc)))
         .boxed()
 }
 
 fn include<'i>() -> Parsed<'i, (&'i str, Runfile<'i>)> {
-    text::keyword("in")
-        .ignore_then(text::whitespace())
-        .ignore_then(string().or_not())
-        // (doc, newline): (String, Option<char>), e, emitter
-        .validate(|path, e, emitter| {
-            let Some(path) = path else {
+    doc()
+        .then_ignore(text::keyword("in"))
+        .then_ignore(text::inline_whitespace())
+        .then(any().and_is(text::newline().not()).repeated().to_slice())
+        .validate(|(doc, path), e, emitter| {
+            let path = path.trim();
+            if path.is_empty() {
                 emitter.emit(Rich::custom(e.span(), "expected path to include"));
                 return ("", Runfile::default());
-            };
+            }
+
+            if !doc.is_empty() {
+                emitter.emit(Rich::custom(e.span(), "includes cannot have documentation"));
+            }
 
             // TODO: Protect against circular includes
             // TODO: Remove leak (although string is alive until the end of the program, so it shouldn't be a problem)
@@ -162,35 +211,36 @@ pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
 
     recursive(|runfile| {
         // TODO: Add support for comments
-        choice((
-            include().map(Results::Include),
-            subcommand(runfile.boxed()).map(Results::Subcommand),
-            command().map(Results::Command),
-        ))
-        .padded()
-        .repeated()
-        .collect::<Vec<Results<'i>>>()
-        .map(|results| {
-            results
-                .into_iter()
-                .fold(Runfile::default(), |mut acc, new| match new {
-                    Results::Command((name, cmd)) => {
-                        acc.commands.insert(name, cmd);
-                        acc
-                    }
-                    Results::Subcommand((name, sub)) => {
-                        acc.subcommands.insert(name, sub);
-                        acc
-                    }
-                    Results::Include((path, include)) => {
-                        // TODO: Avoid clones
-                        acc.commands.extend(include.commands.clone());
-                        acc.subcommands.extend(include.subcommands.clone());
-                        acc.includes.insert(path, include);
-                        acc
-                    }
-                })
-        })
+        comment()
+            .ignore_then(choice((
+                include().map(Results::Include),
+                subcommand(runfile.boxed()).map(Results::Subcommand),
+                command().map(Results::Command),
+            )))
+            .padded()
+            .repeated()
+            .collect::<Vec<Results<'i>>>()
+            .map(|results| {
+                results
+                    .into_iter()
+                    .fold(Runfile::default(), |mut acc, new| match new {
+                        Results::Command((name, cmd)) => {
+                            acc.commands.insert(name, cmd);
+                            acc
+                        }
+                        Results::Subcommand((name, sub)) => {
+                            acc.subcommands.insert(name, sub);
+                            acc
+                        }
+                        Results::Include((path, include)) => {
+                            // TODO: Avoid clones
+                            acc.commands.extend(include.commands.clone());
+                            acc.subcommands.extend(include.subcommands.clone());
+                            acc.includes.insert(path, include);
+                            acc
+                        }
+                    })
+            })
     })
     .boxed()
 }
@@ -228,11 +278,18 @@ mod test {
     #[test]
     fn doc() {
         use super::doc;
-        assert_eq!(doc().parse("#").unwrap(), "");
-        assert_eq!(doc().parse("# hola").unwrap(), "hola");
-        assert_eq!(doc().parse("# hola\n").unwrap(), "hola");
-        assert_eq!(doc().parse("# hola\n# patata\n").unwrap(), "hola\npatata");
-        assert!(doc().parse("# hola\n\n# patata").into_result().is_err());
+        assert_eq!(doc().parse("///").unwrap(), "");
+        assert_eq!(doc().parse("/// hola").unwrap(), "hola");
+        assert_eq!(doc().parse("/// hola\n").unwrap(), "hola");
+        assert_eq!(
+            doc().parse("/// hola\n/// patata\n").unwrap(),
+            "hola\npatata"
+        );
+        assert!(doc().parse("/// hola\n\n/// patata").into_result().is_err());
+        assert!(doc()
+            .parse("/// hola\n/// patata\n\n")
+            .into_result()
+            .is_err());
     }
 
     #[test]

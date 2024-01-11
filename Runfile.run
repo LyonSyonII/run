@@ -1,14 +1,15 @@
-in "./include.run"
-in "./subcommands-stress.run"
-in "./include-sub.run"
+// You can include other files with the 'in' keyword and the path to the file
+in ./include copy.run
+
+// Even subcommands can be included
+// in "./subcommands-stress.run"
 
 cmd default() {
-  # When no command is given, 'default' is run
   # 'doc' is a special variable that contains the whole documentation of the program
   echo -n "$doc";
 }
 
-sh cmd sh(name) {
+sh cmd sh(name micro) {
   # String interpolation is done in all languages with $argument
   echo "Hello $name from the Shell!";
 }
@@ -37,7 +38,10 @@ cmd args(name age) {
   echo "Hello $name, you are $age years old."
 }
 
+/// Comment
 sub pata {
+  in ./include.run
+  
   cmd default() {
     echo "Hello from pata!"
   }

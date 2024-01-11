@@ -1,5 +1,5 @@
 /// This is a command included from another file
-cmd included() {
+cmd included-copy() {
   echo "I'm included!"
 }
 

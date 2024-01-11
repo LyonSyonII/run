@@ -1,5 +1,5 @@
 use ariadne::{sources, Color, ColorGenerator, Fmt, Label, Report, ReportKind, Source};
-use chumsky::Parser as _;
+use chumsky::{error::Rich, Parser as _};
 use colored::Colorize as _;
 pub use std::format as fmt;
 use strlist::Str;
@@ -16,25 +16,7 @@ fn main() -> std::io::Result<()> {
     let args = std::env::args().skip(1).collect::<Vec<_>>();
 
     if args.first().is_some_and_oneof(["-h", "--help"]) {
-        println!("Runs a runfile in the current directory");
-        println!("Possible runfile names: [run, runfile] or any ending in '.run'\n");
-        println!(
-            "{} {} {}\n",
-            "Usage:".bright_green().bold(),
-            "run".bright_cyan().bold(),
-            "[COMMAND] [ARGS...]".cyan()
-        );
-        println!("{}", "Options:".bright_green().bold());
-        println!(
-            "  {}, {}\t\tPrints help information",
-            "-h".bright_cyan().bold(),
-            "--help".bright_cyan().bold()
-        );
-        println!(
-            "  {}, {}\tPrints available commands in the runfile",
-            "-c".bright_cyan().bold(),
-            "--commands".bright_cyan().bold()
-        );
+        print_help();
         return Ok(());
     };
 
@@ -42,31 +24,60 @@ fn main() -> std::io::Result<()> {
     let runfile = match parser::runfile().parse(&input).into_result() {
         Ok(r) => r,
         Err(errors) => {
-            let mut colors = ColorGenerator::new();
-
-            for e in errors {
-                let file = file.as_ref();
-                ariadne::Report::build(ReportKind::Error, file, e.span().start)
-                    .with_message(e.to_string())
-                    .with_label(
-                        Label::new((file, e.span().into_range()))
-                            .with_message(e.reason().fg(Color::Red))
-                            .with_color(colors.next()),
-                    )
-                    .finish()
-                    .eprint((file, Source::from(&input)))?;
-            }
+            print_errors(errors, file, &input)?;
             std::process::exit(1);
         }
     };
 
-    let current_exe = std::env::current_exe()?;
-    let exe_name = current_exe
-        .file_name()
-        .unwrap_or(std::ffi::OsStr::new("run"));
-    runfile
-        .run((" ", [exe_name.to_string_lossy()]), &args)
-        .unwrap();
+    // dbg!(&runfile);
+
+    runfile.run((" ", [get_current_exe()?]), &args).unwrap();
+
+    Ok(())
+}
+
+fn print_help() {
+    println!("Runs a runfile in the current directory");
+    println!("Possible runfile names: [run, runfile] or any ending in '.run'\n");
+    println!(
+        "{} {} {}\n",
+        "Usage:".bright_green().bold(),
+        "run".bright_cyan().bold(),
+        "[COMMAND] [ARGS...]".cyan()
+    );
+    println!("{}", "Options:".bright_green().bold());
+    println!(
+        "  {}, {}\t\tPrints help information",
+        "-h".bright_cyan().bold(),
+        "--help".bright_cyan().bold()
+    );
+    println!(
+        "  {}, {}\tPrints available commands in the runfile",
+        "-c".bright_cyan().bold(),
+        "--commands".bright_cyan().bold()
+    );
+}
+
+fn print_errors<'a>(
+    errors: impl AsRef<[Rich<'a, char>]>,
+    file: impl AsRef<str>,
+    input: impl AsRef<str>,
+) -> std::io::Result<()> {
+    let errors = errors.as_ref();
+    let mut colors = ColorGenerator::new();
+
+    for e in errors {
+        let file = file.as_ref();
+        ariadne::Report::build(ReportKind::Error, file, e.span().start)
+            .with_message(e.to_string())
+            .with_label(
+                Label::new((file, e.span().into_range()))
+                    .with_message(e.reason().fg(Color::Red))
+                    .with_color(colors.next()),
+            )
+            .finish()
+            .eprint((file, Source::from(&input)))?;
+    }
 
     Ok(())
 }
@@ -126,4 +137,12 @@ fn get_file() -> (Str<'static>, String) {
         "--help".bright_cyan().bold()
     );
     std::process::exit(1);
+}
+
+fn get_current_exe() -> std::io::Result<String> {
+    let current_exe = std::env::current_exe()?;
+    let exe_name = current_exe
+        .file_name()
+        .unwrap_or(std::ffi::OsStr::new("run"));
+    Ok(exe_name.to_string_lossy().to_string())
 }

@@ -49,10 +49,7 @@ impl<'i> Runfile<'i> {
         }
 
         let usage = if let Some(name) = name {
-            f!(
-                "{usage} {parents} {name} {}",
-                "[COMMAND] [ARGS...]".cyan()
-            )
+            f!("{usage} {parents} {name} {}", "[COMMAND] [ARGS...]".cyan())
         } else {
             f!("{usage} {parents} {}", "[COMMAND] [ARGS...]".cyan())
         };
@@ -121,12 +118,8 @@ impl<'i> Runfile<'i> {
                 doc.pop_front().unwrap()
             )
             .map_err(op)?;
-            let last = doc.pop();
             for l in doc {
                 writeln!(to, "    {:indent$}   {}", " ", l).map_err(op)?;
-            }
-            if let Some(last) = last {
-                write!(to, "    {:indent$}   {}", " ", last).map_err(op)?;
             }
         }
 
