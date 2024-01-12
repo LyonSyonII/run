@@ -89,7 +89,6 @@ impl<'i> Runfile<'i> {
             let first = lines.next().unwrap();
             let lang = cmd.lang();
             let lang = {
-                // TODO: Show warning if language is not installed
                 let color = if lang.installed() {
                     Color::Cyan
                 } else {
