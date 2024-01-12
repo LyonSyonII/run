@@ -2,7 +2,8 @@
 
 ## Features
 - [] Rework function brackets
-  - > End bracket must have same indentation as `LANG` or `CMD` (in case lange is not specified) or be in the same line
+  - [x] End bracket must have same indentation as `LANG` or `CMD` (in case lange is not specified) or be in the same line
+  - [] Improve error when indent is wrong
 - [] Global variables
 - [] Optional arguments
 - [] --run <LANG\> option, runs stdin as that language
