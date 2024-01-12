@@ -288,13 +288,12 @@ pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
     
     // Ignore empty lines
     recursive(|runfile| {
-        comment()
-            .ignore_then(choice((
+            choice((
                 include().map(Results::Include),
                 subcommand(runfile.boxed()).map(Results::Subcommand),
                 command().map(Results::Command),
-            )))
-            .repeated()
+            ))
+            .separated_by(comment())
             .collect::<Vec<Results<'i>>>()
             .map(|results| {
                 results
