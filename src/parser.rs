@@ -28,9 +28,8 @@ fn line_comment<'i>() -> Parsed<'i, ()> {
                 .then_ignore(text::inline_whitespace().or_not()),
         )
         .ignore_then(any().and_is(text::newline().not()).repeated())
+        .then(text::newline().or(end()))
         .ignored()
-        .separated_by(text::newline())
-        .allow_trailing()
         .boxed()
 }
 
@@ -236,6 +235,7 @@ fn subcommand<'i>(runfile: Parsed<'i, Runfile<'i>>) -> Parsed<'i, (&'i str, Runf
 
 fn include<'i>() -> Parsed<'i, (&'i str, Runfile<'i>)> {
     doc()
+        .then_ignore(text::inline_whitespace())
         .then_ignore(text::keyword("in"))
         .then_ignore(text::inline_whitespace())
         .then(any().and_is(text::newline().not()).repeated().to_slice())
@@ -293,7 +293,9 @@ pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
                 subcommand(runfile.boxed()).map(Results::Subcommand),
                 command().map(Results::Command),
             ))
-            .separated_by(comment())
+            .separated_by(comment().repeated())
+            .allow_leading()
+            .allow_trailing()
             .collect::<Vec<Results<'i>>>()
             .map(|results| {
                 results
@@ -637,7 +639,7 @@ r#"/// multiline command
             bash fn greet(name) { 
                 echo "Hello, $name.sh";
             }
-
+            
             // This is a comment without doc
             fn pata (name age) {
                 echo "Hello, $name.sh";
