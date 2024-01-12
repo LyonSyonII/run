@@ -143,9 +143,9 @@ impl<'i> Command<'i> {
             eprintln!(
                 "{} {} {}{}\n",
                 "Error running".bright_red().bold(),
-                parents.color(Color::Red).bold(),
+                parents.color(Color::BrightRed).bold(),
                 name.bright_red().bold(),
-                ":".bright_red()
+                ":".bright_red().bold()
             );
             eprintln!("{e}");
         }

@@ -175,6 +175,7 @@ fn include<'i>() -> Parsed<'i, (&'i str, Runfile<'i>)> {
             
             // TODO: Protect against circular includes
             // TODO: Remove leak (although string is alive until the end of the program, so it shouldn't be a problem)
+            // TODO: Read relative to the current file instead of the current directory
             let file = match std::fs::read_to_string(path) {
                 Ok(s) => s.leak(),
                 Err(err) => {

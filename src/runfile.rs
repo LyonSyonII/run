@@ -80,13 +80,24 @@ impl<'i> Runfile<'i> {
                 a.name().cmp(b.name())
             }
         });
+        let mut warnings = Vec::new();
         let (lang_indent, name_indent) = indent;
         for cmd in commands {
             let doc = cmd.doc(parents);
             let mut lines = doc.into_iter();
 
             let first = lines.next().unwrap();
-            let lang = format!("<{}> ", cmd.lang().as_str()).yellow();
+            let lang = cmd.lang();
+            let lang = {
+                // TODO: Show warning if language is not installed
+                let color = if lang.installed() {
+                    Color::Cyan
+                } else {
+                    warnings.push(lang);
+                    Color::BrightYellow
+                };
+                format!("<{}> ", lang.as_str()).color(color)
+            };
             let name = format!("{} ", cmd.name()).bright_cyan().bold();
             writeln!(
                 to,
@@ -96,6 +107,16 @@ impl<'i> Runfile<'i> {
             for l in lines {
                 writeln!(to, " {:lang_indent$} {:name_indent$} {}", "", "", l).map_err(op)?;
             }
+        }
+
+        if !warnings.is_empty() {
+            writeln!(to).map_err(op)?;
+            writeln!(to, "{}", "Missing Languages:".bright_yellow().bold()).map_err(op)?;
+            writeln!(to, "{}", " Some languages in this runfile are not installed.\n Check https://github.com/lyonsyonii/runfile#languages for more information.\n\n Missing:".yellow()).map_err(op)?;
+            for lang in warnings {
+                writeln!(to, " {} {}", "-".bold().yellow(), lang.as_str().bold().yellow()).map_err(op)?;
+            }
+            writeln!(to);
         }
 
         Ok(())

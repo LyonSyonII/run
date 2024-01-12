@@ -18,7 +18,7 @@
           nodejs
           rustup
           sccache
-          python311
+          # python311
         ];
         shellHook = ''
           rustup toolchain install nightly-2023-10-31 -c miri rustc-codegen-cranelift-preview rust-src rust-analyzer rustfmt clippy
