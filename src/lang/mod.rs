@@ -8,8 +8,9 @@ use colored::Colorize as _;
 
 use crate::strlist::Str;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Language {
+    #[default]
     Shell,
     Bash,
     Rust,
@@ -18,7 +19,7 @@ pub enum Language {
 }
 
 impl Language {
-    pub fn to_str(self) -> &'static str {
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::Shell => "sh",
             Self::Bash => "bash",

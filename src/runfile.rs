@@ -17,13 +17,20 @@ pub struct Runfile<'i> {
 }
 
 impl<'i> Runfile<'i> {
-    fn calculate_indent(&self) -> usize {
-        self.commands
-            .keys()
-            .map(|name| name.len())
+    fn calculate_indent(&self) -> (usize, usize) {
+        let first = self.commands
+            .values()
+            .map(|c| c.lang().as_str().len())
+            .max()
+            .unwrap_or_default();
+        let second = self.commands
+            .values()
+            .map(|c| c.name().len())
             .chain(self.subcommands.keys().map(|name| name.len()))
             .max()
-            .unwrap_or_default()
+            .unwrap_or_default();
+
+        (first+3, second+1)
     }
 
     pub fn with_doc(mut self, doc: impl Into<String>) -> Self {
@@ -59,7 +66,7 @@ impl<'i> Runfile<'i> {
     fn print_commands(
         &self,
         parents: StrListSlice,
-        indent: usize,
+        indent: (usize, usize),
         to: &mut (impl std::io::Write + ?Sized),
     ) -> Result<(), Str<'_>> {
         let op = |e: std::io::Error| Str::from(e.to_string());
@@ -67,26 +74,27 @@ impl<'i> Runfile<'i> {
         writeln!(to, "{}", "Commands:".bright_green().bold()).map_err(op)?;
         let mut commands = self.commands.values().collect::<Vec<_>>();
         commands.sort_by(|a, b| {
-            if a.name == "default" {
+            if a.name() == "default" {
                 std::cmp::Ordering::Less
             } else {
-                a.name.cmp(b.name)
+                a.name().cmp(b.name())
             }
         });
+        let (lang_indent, name_indent) = indent;
         for cmd in commands {
             let doc = cmd.doc(parents);
             let mut lines = doc.into_iter();
 
             let first = lines.next().unwrap();
+            let lang = format!("<{}> ", cmd.lang().as_str()).yellow();
+            let name = format!("{} ", cmd.name()).bright_cyan().bold();
             writeln!(
                 to,
-                "    {:indent$}   {}",
-                cmd.name.bright_cyan().bold(),
-                first
+                " {lang:·<lang_indent$} {name:·<name_indent$} {first}"
             )
             .map_err(op)?;
             for l in lines {
-                writeln!(to, "    {:indent$}   {}", "", l).map_err(op)?;
+                writeln!(to, " {:lang_indent$} {:name_indent$} {}", "", "", l).map_err(op)?;
             }
         }
 
@@ -96,7 +104,7 @@ impl<'i> Runfile<'i> {
     fn print_subcommands(
         &self,
         parents: StrListSlice,
-        indent: usize,
+        indent: (usize, usize),
         to: &mut (impl std::io::Write + ?Sized),
     ) -> Result<(), Str<'_>> {
         if self.subcommands.is_empty() {
@@ -108,18 +116,20 @@ impl<'i> Runfile<'i> {
         writeln!(to, "{}", "Subcommands:".bright_green().bold()).map_err(op)?;
         let mut subcommands = self.subcommands.iter().collect::<Vec<_>>();
         subcommands.sort_unstable_by(|(n1, _), (n2, _)| n1.cmp(n2));
+        // let (lang_indent, name_indent) = indent;
+        let indent = indent.0 + indent.1;
         for (name, sub) in subcommands {
             let mut doc = sub.doc(name, parents);
-            let name = f!("{:indent$}", name);
+            // let name = f!(" {:lang_indent$} {:·<name_indent$}", "", f!("{name} ")).bright_cyan().bold();
+            let name = f!(" {:·<indent$}", f!("{name} ")).bright_cyan().bold();
             writeln!(
                 to,
-                "    {}   {}",
-                name.bright_cyan().bold(),
-                doc.pop_front().unwrap()
+                "{name} {}", doc.pop_front().unwrap()
             )
             .map_err(op)?;
             for l in doc {
-                writeln!(to, "    {:indent$}   {}", " ", l).map_err(op)?;
+                // writeln!(to, " {:lang_indent$} {:name_indent$} {l}", "", "").map_err(op)?;
+                writeln!(to, " {:indent$} {l}", "").map_err(op)?;
             }
         }
 

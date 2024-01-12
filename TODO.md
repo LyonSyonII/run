@@ -9,7 +9,7 @@
 - [] Nushell
 - [] Fish
 - [] Typescript
-- [] Rust
+- [x] Rust
 - [] C
 - [] C++
 - [] C#

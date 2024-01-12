@@ -70,7 +70,7 @@ fn language_fn<'i>() -> Parsed<'i, Language> {
     let cmd = choice((text::keyword("fn"), text::keyword("cmd")));
 
     cmd.clone()
-        .to(Language::Bash)
+        .to(Language::default())
         .or(text::ident()
             .try_map(|s: &str, span| s.parse::<Language>().map_err(|e| Rich::custom(span, e)))
             .then_ignore(cmd.padded().map_err(|e| error(e, "expected 'fn' or 'cmd'"))))
@@ -172,7 +172,7 @@ fn include<'i>() -> Parsed<'i, (&'i str, Runfile<'i>)> {
             if !doc.is_empty() {
                 emitter.emit(Rich::custom(e.span(), "includes cannot have documentation"));
             }
-
+            
             // TODO: Protect against circular includes
             // TODO: Remove leak (although string is alive until the end of the program, so it shouldn't be a problem)
             let file = match std::fs::read_to_string(path) {
@@ -209,7 +209,6 @@ pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
     }
 
     recursive(|runfile| {
-        // TODO: Add support for comments
         comment()
             .ignore_then(choice((
                 include().map(Results::Include),

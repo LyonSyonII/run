@@ -11,7 +11,7 @@ use crate::{
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub struct Command<'i> {
-    pub name: &'i str,
+    name: &'i str,
     doc: String,
     lang: Language,
     args: Vec<&'i str>,
@@ -34,6 +34,14 @@ impl<'i> Command<'i> {
             args,
             script,
         }
+    }
+
+    pub fn name(&self) -> &'i str {
+        self.name
+    }
+
+    pub fn lang(&self) -> Language {
+        self.lang
     }
 
     pub fn usage(&self, parents: StrListSlice, color: Color, newlines: usize) -> String {

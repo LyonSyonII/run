@@ -12,7 +12,7 @@ sh cmd sh(name) {
   echo Hello $name from the Shell!
 }
 
-sh cmd bash(name) {
+bash cmd bash(name) {
   echo "Hello $name from Bash!";
 }
 
@@ -62,6 +62,7 @@ in ./included-subcommand.run
 
 // You can also include files in a subcommand
 // The included commands/subcommands will only be available in the subcommand
+/// This is a subcommand with included commands
 sub sub-with-included {
   in ./included command.run
   in ./included-subcommand.run
