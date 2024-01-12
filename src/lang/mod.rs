@@ -53,10 +53,12 @@ impl Language {
 pub(crate) fn exe_not_found(exe: &str, error: which::Error) -> Str<'_> {
     let exe = format!("'{}'", exe).bright_purple().bold();
     Str::from(format!(
-        "{exe} {}\n\nComplete error: {error}",
-        "executable could not be found.\nDo you have it installed and in the PATH?"
+        "{exe} {}{}{}\n\nComplete error: {error}",
+        "executable could not be found.\nDo you have it installed and in the PATH?\n\nRun '"
             .bright_purple()
             .bold(),
+        "run --commands".bright_cyan().bold(),
+        "' for more information.".bright_purple().bold(),
     ))
 }
 

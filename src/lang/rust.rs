@@ -16,7 +16,7 @@ pub(crate) fn program() -> Result<std::path::PathBuf, Str<'static>> {
 
 pub(crate) fn execute(input: &str) -> Result<(), Str<'_>> {
     create_project(input)?;
-    
+
     let out = std::process::Command::new("cargo")
         .arg("run")
         .args(["--color", "always"])
@@ -24,7 +24,9 @@ pub(crate) fn execute(input: &str) -> Result<(), Str<'_>> {
         .map_err(|error| super::execution_failed(BINARY, error))?;
 
     if out.status.success() {
-        std::io::stdout().write_all(&out.stdout).map_err(|e| Str::from(e.to_string()))
+        std::io::stdout()
+            .write_all(&out.stdout)
+            .map_err(|e| Str::from(e.to_string()))
     } else {
         let err =
             String::from_utf8(out.stderr).map_err(|_| "Failed to parse command output as UTF-8")?;
@@ -42,13 +44,13 @@ fn create_project(input: &str) -> Result<(), Str<'static>> {
     let Ok(path) = app_dirs2::app_dir(app_dirs2::AppDataType::UserCache, &app_info, &path) else {
         return Err("Could not create project directory".into());
     };
-    
+
     let Ok(_) = std::env::set_current_dir(&path) else {
         return Err(format!("Could not set current directory to {path:?}").into());
     };
-    
+
     let cargo = program()?;
-    
+
     if std::fs::metadata(path.join("Cargo.toml")).is_err() {
         std::process::Command::new(cargo)
             .arg("init")
@@ -59,9 +61,9 @@ fn create_project(input: &str) -> Result<(), Str<'static>> {
             .wait()
             .map_err(|error| super::execution_failed(BINARY, error))?;
     }
-    
+
     let path = path.join("src");
-    
+
     let Ok(_) = std::env::set_current_dir("./src") else {
         return Err(format!("Could not set current directory to {path:?}").into());
     };

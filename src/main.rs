@@ -120,7 +120,7 @@ fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
         );
         std::process::exit(1);
     }
-    
+
     let files = [
         "runfile",
         "run",

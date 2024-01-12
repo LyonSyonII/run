@@ -18,19 +18,21 @@ pub struct Runfile<'i> {
 
 impl<'i> Runfile<'i> {
     fn calculate_indent(&self) -> (usize, usize) {
-        let first = self.commands
+        let first = self
+            .commands
             .values()
             .map(|c| c.lang().as_str().len())
             .max()
             .unwrap_or_default();
-        let second = self.commands
+        let second = self
+            .commands
             .values()
             .map(|c| c.name().len())
             .chain(self.subcommands.keys().map(|name| name.len()))
             .max()
             .unwrap_or_default();
 
-        (first+3, second+1)
+        (first + 3, second + 1)
     }
 
     pub fn with_doc(mut self, doc: impl Into<String>) -> Self {
@@ -71,6 +73,10 @@ impl<'i> Runfile<'i> {
     ) -> Result<(), Str<'_>> {
         let op = |e: std::io::Error| Str::from(e.to_string());
 
+        if self.commands.is_empty() {
+            return Ok(());
+        }
+
         writeln!(to, "{}", "Commands:".bright_green().bold()).map_err(op)?;
         let mut commands = self.commands.values().collect::<Vec<_>>();
         commands.sort_by(|a, b| {
@@ -98,11 +104,7 @@ impl<'i> Runfile<'i> {
                 format!("<{}> ", lang.as_str()).color(color)
             };
             let name = format!("{} ", cmd.name()).bright_cyan().bold();
-            writeln!(
-                to,
-                " {lang:·<lang_indent$} {name:·<name_indent$} {first}"
-            )
-            .map_err(op)?;
+            writeln!(to, " {lang:·<lang_indent$} {name:·<name_indent$} {first}").map_err(op)?;
             for l in lines {
                 writeln!(to, " {:lang_indent$} {:name_indent$} {}", "", "", l).map_err(op)?;
             }
@@ -111,11 +113,18 @@ impl<'i> Runfile<'i> {
         if !warnings.is_empty() {
             writeln!(to).map_err(op)?;
             writeln!(to, "{}", "Missing Languages:".bright_yellow().bold()).map_err(op)?;
-            writeln!(to, "{}", " Some languages in this runfile are not installed.\n Check https://github.com/lyonsyonii/runfile#languages for more information.\n\n Missing:".yellow()).map_err(op)?;
+            writeln!(to, "{}", " Some of the languages in this runfile are not installed.\n Check https://github.com/lyonsyonii/runfile#languages for more information.\n\n Missing:".bright_yellow()).map_err(op)?;
             for lang in warnings {
-                writeln!(to, " {} {}", "-".bold().yellow(), lang.as_str().bold().yellow()).map_err(op)?;
+                writeln!(
+                    to,
+                    " {} {}",
+                    "-".bold().bright_yellow(),
+                    lang.as_str().bold().bright_yellow()
+                )
+                .map_err(op)?;
             }
-            writeln!(to);
+            // TODO: Fix extra newline when no subcommands are present
+            writeln!(to).map_err(op)?;
         }
 
         Ok(())
@@ -142,11 +151,7 @@ impl<'i> Runfile<'i> {
             let mut doc = sub.doc(name, parents);
             // let name = f!(" {:lang_indent$} {:·<name_indent$}", "", f!("{name} ")).bright_cyan().bold();
             let name = f!(" {:·<indent$}", f!("{name} ")).bright_cyan().bold();
-            writeln!(
-                to,
-                "{name} {}", doc.pop_front().unwrap()
-            )
-            .map_err(op)?;
+            writeln!(to, "{name} {}", doc.pop_front().unwrap()).map_err(op)?;
             for l in doc {
                 // writeln!(to, " {:lang_indent$} {:name_indent$} {l}", "", "").map_err(op)?;
                 writeln!(to, " {:indent$} {l}", "").map_err(op)?;
@@ -203,9 +208,11 @@ impl<'i> Runfile<'i> {
             return Ok(());
         }
 
-        let runfile_docs = |to: &mut Vec<u8>| {
-            self.print_help("", parents.as_slice(), to)
-                .unwrap_or_default()
+        let runfile_docs = || {
+            let mut buf = Vec::new();
+            self.print_help("", parents.as_slice(), &mut buf)
+                .unwrap_or_default();
+            String::from_utf8(buf).map_err(|e| e.to_string())
         };
 
         let Some(first) = first.map(String::as_str) else {
@@ -221,7 +228,7 @@ impl<'i> Runfile<'i> {
                 return Ok(());
             };
             return cmd
-                .run(parents.as_slice(), args, runfile_docs)
+                .run(parents.as_slice(), args, runfile_docs()?)
                 .map_err(|e| f!("Command execution failed: {}", e).into());
         };
 
@@ -229,14 +236,14 @@ impl<'i> Runfile<'i> {
             cmd.run(
                 parents.as_slice(),
                 args.get(1..).unwrap_or_default(),
-                runfile_docs,
+                runfile_docs()?,
             )
             .map_err(|e| f!("Command execution failed: {}", e).into())
         } else if let Some(sub) = self.subcommands.get(first) {
             sub.run(parents.append(first), args.get(1..).unwrap_or_default())
         } else {
             self.print_help(
-                f!("ERROR: Could not find command or subcommand: {}", first)
+                f!("Error: Could not find command or subcommand '{}'", first)
                     .bright_red()
                     .to_string(),
                 parents.as_slice(),

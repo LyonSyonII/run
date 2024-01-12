@@ -1,15 +1,14 @@
 pub use std::format as fmt;
-use std::{io::Write, str::FromStr};
+use std::io::Write;
 
 use colored::{Color, Colorize as _};
 
 use crate::{
     lang::Language,
     strlist::{StrList, StrListSlice},
-    utils::Goodbye,
 };
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Eq, Clone)]
 pub struct Command<'i> {
     name: &'i str,
     doc: String,
@@ -44,6 +43,8 @@ impl<'i> Command<'i> {
         self.lang
     }
 
+    // Clippy does not detect the usage in the 'format!' macro
+    #[allow(unused_variables)]
     pub fn usage(&self, parents: StrListSlice, color: Color, newlines: usize) -> String {
         let usage = "Usage:".color(color).bold();
         let parents = parents.color(Color::BrightCyan).bold();
@@ -88,11 +89,22 @@ impl<'i> Command<'i> {
         Ok(())
     }
 
+    pub fn script_with_indent_fix(&self) -> String {
+        // Remove extra indentation from script
+        let script = self.script.to_string();
+        let mut script = script.lines().filter(|l| !l.trim().is_empty()).peekable();
+        let indent = script
+            .peek()
+            .map(|l| l.len() - l.trim_start().len())
+            .unwrap_or(0);
+        script.map(|l| &l[indent..]).collect::<Vec<_>>().join("\n")
+    }
+
     pub fn run(
         &self,
         parents: StrListSlice,
         args: impl AsRef<[String]>,
-        runfile_docs: impl Fn(&mut Vec<u8>),
+        runfile_docs: String,
     ) -> std::io::Result<()> {
         let args = args.as_ref();
         let name = self.name;
@@ -115,25 +127,13 @@ impl<'i> Command<'i> {
         }
 
         // Remove indentation from script
-        let script = self.script.to_string();
-        let mut script = script.lines().filter(|l| !l.trim().is_empty()).peekable();
-        let indent = script
-            .peek()
-            .map(|l| l.len() - l.trim_start().len())
-            .unwrap_or(0);
-        let mut script = script.map(|l| &l[indent..]).collect::<Vec<_>>().join("\n");
+        let mut script = self.script_with_indent_fix();
 
         // Replace arguments
         for (name, arg) in self.args.iter().zip(args.as_ref()) {
             let name = fmt!("${name}");
             script = script.replace(&name, arg);
         }
-
-        let runfile_docs = {
-            let mut buf = Vec::new();
-            runfile_docs(&mut buf);
-            String::from_utf8(buf).unwrap()
-        };
 
         script = script.replace("$doc", &runfile_docs);
         script = script.replace("$cmddoc", &self.doc(parents).to_string());
@@ -151,5 +151,42 @@ impl<'i> Command<'i> {
         }
 
         Ok(())
+    }
+}
+
+impl PartialEq for Command<'_> {
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name
+            && self.doc == other.doc
+            && self.lang == other.lang
+            && self.args == other.args
+            && self.script_with_indent_fix() == other.script_with_indent_fix()
+    }
+}
+
+impl PartialOrd for Command<'_> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for Command<'_> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        if self.name == "default" {
+            return std::cmp::Ordering::Less;
+        }
+        self.name.cmp(other.name)
+    }
+}
+
+impl std::fmt::Debug for Command<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Command")
+            .field("name", &self.name)
+            .field("doc", &self.doc)
+            .field("lang", &self.lang)
+            .field("args", &self.args)
+            .field("script", &self.script_with_indent_fix())
+            .finish()
     }
 }

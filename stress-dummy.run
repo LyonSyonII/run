@@ -1,4 +1,0 @@
-/// This is a command included from another file
-cmd included() {
-  echo "I've been included from another file!"
-}

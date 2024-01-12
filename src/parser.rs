@@ -27,7 +27,8 @@ fn line_comment<'i>() -> Parsed<'i, ()> {
                 .then(just('/').not())
                 .then_ignore(text::inline_whitespace().or_not()),
         )
-        .ignore_then(any().and_is(text::newline().not()).repeated().to_slice())
+        .ignore_then(any().and_is(text::newline().not()).repeated())
+        .ignored()
         .separated_by(text::newline())
         .allow_trailing()
         .boxed()
@@ -41,13 +42,34 @@ fn block_comment<'i>() -> Parsed<'i, ()> {
         .boxed()
 }
 
+fn empty_line<'i>() -> Parsed<'i, ()> {
+    text::inline_whitespace()
+        .then(text::newline())
+        .ignored()
+        .boxed()
+}
+
+#[test]
+fn test_empty_line() {
+    assert!(empty_line().parse("").into_result().is_err());
+    assert!(empty_line().parse(" ").into_result().is_err());
+    assert!(empty_line().parse("\n").into_result().is_ok());
+    assert!(empty_line().parse(" \n").into_result().is_ok());
+    assert!(empty_line().parse("hola").into_result().is_err());
+    assert!(empty_line().parse("hola\n").into_result().is_err());
+}
+
 fn comment<'i>() -> Parsed<'i, ()> {
-    line_comment().or(block_comment()).boxed()
+    choice((
+        empty_line(),
+        line_comment(),
+        block_comment(),
+    )).boxed()
 }
 
 fn doc<'i>() -> Parsed<'i, String> {
     text::inline_whitespace() // indentation
-        .ignore_then(just("///").then_ignore(text::inline_whitespace().or_not()))
+        .ignore_then(just("///").then_ignore(text::inline_whitespace()))
         .ignore_then(any().and_is(text::newline().not()).repeated().to_slice())
         .separated_by(text::newline())
         .allow_trailing()
@@ -66,15 +88,22 @@ fn doc<'i>() -> Parsed<'i, String> {
         .boxed()
 }
 
-fn language_fn<'i>() -> Parsed<'i, Language> {
-    let cmd = choice((text::keyword("fn"), text::keyword("cmd")));
+fn indentation<'i>() -> Parsed<'i, usize> {
+    just(' ').repeated().count().boxed()
+}
 
-    cmd.clone()
-        .to(Language::default())
-        .or(text::ident()
-            .try_map(|s: &str, span| s.parse::<Language>().map_err(|e| Rich::custom(span, e)))
-            .then_ignore(cmd.padded().map_err(|e| error(e, "expected 'fn' or 'cmd'"))))
-        .boxed()
+fn language_fn<'i>() -> Parsed<'i, (usize, Language)> {
+    let lang_ident = any()
+        .filter(|c: &char| !c.is_whitespace())
+        .repeated()
+        .to_slice();
+    let cmd = choice((text::keyword("fn"), text::keyword("cmd")));
+    let language = cmd.clone().to(Language::default()).or(lang_ident
+        .try_map(|s: &str, span| s.parse::<Language>().map_err(|e| Rich::custom(span, e)))
+        .then_ignore(text::whitespace().at_least(1))
+        .then_ignore(cmd.map_err(|e| error(e, "expected 'fn' or 'cmd'"))));
+
+    indentation().then(language).then_ignore(text::whitespace()).boxed()
 }
 
 fn fn_ident<'i>() -> Parsed<'i, &'i str> {
@@ -107,10 +136,10 @@ fn args<'i>() -> Parsed<'i, Vec<&'i str>> {
         .boxed()
 }
 
-fn body<'i>() -> Parsed<'i, &'i str> {
+/* fn body<'i>(indent: usize) -> Parsed<'i, &'i str> {
     // ([^ '{' '}'] / "{" body() "}")*
 
-    let body = recursive(|body| {
+    /*     let body = recursive(|body| {
         choice((
             none_of("{}").to_slice(),
             just('{').then(body).then(just('}')).to_slice(),
@@ -121,14 +150,20 @@ fn body<'i>() -> Parsed<'i, &'i str> {
 
     just('{')
         .ignore_then(body)
+        .then_with_ctx(then)
         .then_ignore(just('}'))
         // .map(|b: &str| b.trim()) TODO: Check if it really needs to be removed
-        .boxed()
-}
+        .boxed() */
+    let end = just(' ').repeated().configure(|cfg, indent: &usize| cfg.exactly(*indent)).then(just('}'));
 
-fn signature<'i>() -> Parsed<'i, (Language, &'i str, Vec<&'i str>)> {
+    just('{')
+        .ignore_then(any().and_is(end.not()).repeated().to_slice())
+        .then_ignore(end)
+        .boxed()
+} */
+
+fn signature<'i>() -> Parsed<'i, ((usize, Language), &'i str, Vec<&'i str>)> {
     language_fn()
-        .padded()
         .then(fn_ident().padded().labelled("command name"))
         .then(args())
         .map(|((lang, name), args)| (lang, name, args))
@@ -136,13 +171,55 @@ fn signature<'i>() -> Parsed<'i, (Language, &'i str, Vec<&'i str>)> {
 }
 
 fn command<'i>() -> Parsed<'i, (&'i str, Command<'i>)> {
+    let inline_body = {
+        let end = just('}')
+            .ignore_then(text::inline_whitespace())
+            .ignore_then(just('\n').ignored().or(end()));
+
+        let any = any()
+            .and_is(choice((text::newline(), end)).not())
+            .repeated()
+            .to_slice();
+        just('{')
+            .ignore_then(text::inline_whitespace())
+            .ignore_then(any)
+            .then_ignore(end)
+    };
+    let body = {
+        let end = just(' ')
+            .repeated()
+            .configure(|cfg, (_, indent, _, _, _)| {
+                cfg.exactly(*indent)
+            })
+            .then(just('}'));
+
+        let line: Boxed<'_, '_, _, &str, _> = any()
+            .and_is(text::newline().not())
+            .repeated()
+            .then(just('\n'))
+            .to_slice()
+            .boxed();
+
+        let lines = end.not().then(line).repeated().to_slice();
+
+        let multiline = just('{')
+            .ignore_then(text::inline_whitespace())
+            .ignore_then(just('\n'))
+            .ignore_then(lines)
+            .then_ignore(end)
+            .then_ignore(text::inline_whitespace())
+            .then_ignore(just('\n').ignored().or(chumsky::prelude::end()));
+        
+        choice((multiline, inline_body))
+    };
     doc()
-        .then(signature().padded())
-        .then(body().padded().expect("expected command body"))
-        .map(|((doc, (lang, name, args)), script)| {
+        .then(signature())
+        .map(|(doc, ((indent, lang), name, args))| (doc, indent, lang, name, args))
+        .then_ignore(text::inline_whitespace())
+        .then_with_ctx(body.labelled("command body"))
+        .map(|((doc, _, lang, name, args), script)| {
             (name, Command::new(name, doc, lang, args, script))
         })
-        .padded()
         .boxed()
 }
 
@@ -172,7 +249,7 @@ fn include<'i>() -> Parsed<'i, (&'i str, Runfile<'i>)> {
             if !doc.is_empty() {
                 emitter.emit(Rich::custom(e.span(), "includes cannot have documentation"));
             }
-            
+
             // TODO: Protect against circular includes
             // TODO: Remove leak (although string is alive until the end of the program, so it shouldn't be a problem)
             // TODO: Read relative to the current file instead of the current directory
@@ -208,7 +285,8 @@ pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
         Subcommand((&'i str, Runfile<'i>)),
         Include((&'i str, Runfile<'i>)),
     }
-
+    
+    // Ignore empty lines
     recursive(|runfile| {
         comment()
             .ignore_then(choice((
@@ -216,7 +294,6 @@ pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
                 subcommand(runfile.boxed()).map(Results::Subcommand),
                 command().map(Results::Command),
             )))
-            .padded()
             .repeated()
             .collect::<Vec<Results<'i>>>()
             .map(|results| {
@@ -294,10 +371,15 @@ mod test {
     #[test]
     fn language() {
         use super::language_fn;
-        assert_eq!(language_fn().parse("bash fn").unwrap(), Language::Bash);
-        assert_eq!(language_fn().parse("fn").unwrap(), Language::Bash);
+        assert_eq!(language_fn().parse("bash fn").unwrap(), (0, Language::Bash));
+        assert_eq!(language_fn().parse("fn").unwrap(), (0, Language::Shell));
         assert!(language_fn().parse("bas fn").into_result().is_err());
         assert!(language_fn().parse("bash").into_result().is_err());
+        assert_eq!(
+            language_fn().parse("  bash fn").unwrap(),
+            (2, Language::Bash)
+        );
+        assert_eq!(language_fn().parse("  fn").unwrap(), (2, Language::Shell));
     }
 
     #[test]
@@ -325,7 +407,7 @@ mod test {
         );
     }
 
-    #[test]
+    /*     #[test]
     fn body() {
         use super::body;
 
@@ -362,17 +444,34 @@ mod test {
                 error
             );
         }
+    } */
+
+    #[test]
+    fn indentation() {
+        assert_eq!(super::indentation().parse("").unwrap(), 0);
+        assert_eq!(super::indentation().parse(" ").unwrap(), 1);
+        assert_eq!(super::indentation().parse("  ").unwrap(), 2);
+        assert_eq!(super::indentation().parse("   ").unwrap(), 3);
+        assert_eq!(super::indentation().parse("    ").unwrap(), 4);
     }
 
     #[test]
     fn signature() {
         use super::signature;
-        let expected_signature = (Language::Bash, "greet", vec!["name"]);
-        let actual_signature = signature().parse("sh fn greet(name)").unwrap();
+        let expected_signature = ((0, Language::Bash), "greet", vec!["name"]);
+        let actual_signature = signature().parse("bash fn greet(name)").unwrap();
         assert_eq!(actual_signature, expected_signature);
 
-        let expected_signature = (Language::Bash, "pata", vec!["name", "age"]);
+        let expected_signature = ((0, Language::Shell), "pata", vec!["name", "age"]);
         let actual_signature = signature().parse("fn pata (name age)").unwrap();
+        assert_eq!(actual_signature, expected_signature);
+
+        let expected_signature = ((2, Language::Bash), "greet", vec!["name"]);
+        let actual_signature = signature().parse("  bash fn greet(name)").unwrap();
+        assert_eq!(actual_signature, expected_signature);
+
+        let expected_signature = ((2, Language::Shell), "pata", vec!["name", "age"]);
+        let actual_signature = signature().parse("  fn pata (name age)").unwrap();
         assert_eq!(actual_signature, expected_signature);
     }
 
@@ -380,35 +479,125 @@ mod test {
     fn command() {
         use super::command;
         let expected_command = Command::new(
-            "greet",
-            "Greets the user".into(),
-            Language::Bash,
+            "inline",
+            "inline command".into(),
+            Language::Shell,
+            vec!["name"],
+            "echo 'Hello, $name.sh'; ",
+        );
+        let actual_command = command()
+            .parse("/// inline command\nsh fn inline(name) { echo 'Hello, $name.sh'; }")
+            .into_result();
+        assert_eq!(
+            actual_command,
+            Ok(("inline", expected_command.clone())),
+            "Actual: {:#?}\nExpected: {:#?}",
+            actual_command,
+            expected_command
+        );
+
+        let expected_command = Command::new(
+            "multiline",
+            "".into(),
+            Language::Shell,
             vec!["name"],
             "echo 'Hello, $name.sh';",
         );
         let actual_command = command()
-            .parse("# Greets the user\nsh fn greet(name) { echo 'Hello, $name.sh'; }")
+            .parse(
+                "sh fn multiline(name) {\necho 'Hello, $name.sh';\n}"
+            )
             .into_result();
         assert_eq!(
             actual_command,
-            Ok(("greet", expected_command.clone())),
+            Ok(("multiline", expected_command.clone())),
             "Actual: {:#?}\nExpected: {:#?}",
             actual_command,
             expected_command
         );
 
         let actual_command = command()
+        .parse(
+            "  sh fn multiline(name) { \n  echo 'Hello, $name.sh';\n  }"
+        )
+        .into_result();
+        assert_eq!(
+            actual_command,
+            Ok(("multiline", expected_command.clone())),
+            "Actual: {:#?}\nExpected: {:#?}",
+            actual_command,
+            expected_command
+        );
+        
+        let expected_command = Command::new(
+            "multiline",
+            "multiline command".into(),
+            Language::Shell,
+            vec!["name"],
+            "echo 'Hello, $name.sh';",
+        );
+        let actual_command = command()
             .parse(
-                r#"
-                # Greets the user
-                sh fn greet(name) { 
-                    echo 'Hello, $name.sh';
-                }"#,
+                
+r#"/// multiline command
+sh fn multiline(name) { 
+  echo 'Hello, $name.sh';
+}"#,
             )
             .into_result();
         assert_eq!(
             actual_command,
-            Ok(("greet", expected_command.clone())),
+            Ok(("multiline", expected_command.clone())),
+            "Actual: {:#?}\nExpected: {:#?}",
+            actual_command,
+            expected_command
+        );
+
+        let expected_command = Command::new(
+            "multiline2",
+            "multiline command".into(),
+            Language::Shell,
+            vec!["name"],
+            "{}\necho 'Hello, $name.sh';",
+        );
+        let actual_command = command()
+            .parse(
+r#"/// multiline command
+sh fn multiline2(name) {
+    {}
+    echo 'Hello, $name.sh';
+}"#,
+            )
+            .into_result();
+        assert_eq!(
+            actual_command,
+            Ok(("multiline2", expected_command.clone())),
+            "Actual: {:#?}\nExpected: {:#?}",
+            actual_command,
+            expected_command
+        );
+
+        let expected_command = Command::new(
+            "multiline3",
+            "multiline command".into(),
+            Language::Javascript,
+            vec!["name"],
+            "function greet() {\n    console.log('Hello, $name.js');\n}\ngreet();",
+        );
+        let actual_command = command()
+            .parse(
+r#"/// multiline command
+    js fn multiline3(name) {
+        function greet() {
+            console.log('Hello, $name.js');
+        }
+        greet();
+    }"#,
+            )
+            .into_result();
+        assert_eq!(
+            actual_command,
+            Ok(("multiline3", expected_command.clone())),
             "Actual: {:#?}\nExpected: {:#?}",
             actual_command,
             expected_command
@@ -434,7 +623,7 @@ mod test {
                     Command::new(
                         "pata",
                         "".into(),
-                        Language::Bash,
+                        Language::Shell,
                         vec!["name", "age"],
                         "echo \"Hello, $name.sh\";",
                     ),
@@ -445,11 +634,12 @@ mod test {
         let actual_runfile = super::runfile()
             .parse(
                 r#"
-            # Greets the user
-            sh fn greet(name) { 
+            /// Greets the user
+            bash fn greet(name) { 
                 echo "Hello, $name.sh";
             }
-            
+
+            // This is a comment without doc
             fn pata (name age) {
                 echo "Hello, $name.sh";
             }"#,
@@ -470,7 +660,7 @@ mod test {
                 Command::new(
                     "greet",
                     "Greets the user".into(),
-                    Language::Bash,
+                    Language::Shell,
                     vec!["name"],
                     "echo \"Hello, $name.sh\";",
                 ),
@@ -479,9 +669,8 @@ mod test {
         };
         let actual = super::subcommand(super::runfile())
             .parse(
-                r#"
-            sub subcommand {
-                # Greets the user
+                r#"sub subcommand {
+                /// Greets the user
                 sh fn greet(name) { 
                     echo "Hello, $name.sh";
                 }
