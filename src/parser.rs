@@ -1,356 +1,622 @@
-use crate::{command::Command, lang::Language, runfile::Runfile, utils::BoolExt as _};
-use chumsky::{prelude::*, text::Char as _};
+use crate::{
+    command::Command, lang::Language, runfile::Runfile, strlist::Str, utils::BoolExt as _,
+};
 pub use std::format as fmt;
 
-type Error<'i> = extra::Err<Rich<'i, char>>;
-type Parsed<'i, T> = Boxed<'i, 'i, &'i str, T, Error<'i>>;
-
-fn error<'i>(e: Rich<'i, char>, msg: &'static str) -> Rich<'i, char> {
-    Rich::custom(*e.span(), msg)
+#[derive(Debug, Clone, PartialEq)]
+pub struct Error<'i> {
+    pub start: usize,
+    pub end: usize,
+    msg: Str<'i>,
 }
 
-fn string<'i>() -> Parsed<'i, &'i str> {
-    let escape = just('\\').then_ignore(one_of("\\/\"bfnrt"));
+impl<'i> Error<'i> {
+    pub fn new(start: usize, end: usize, msg: impl Into<Str<'i>>) -> Self {
+        Self {
+            start,
+            end,
+            msg: msg.into(),
+        }
+    }
 
-    none_of("\\\"")
-        .or(escape)
-        .repeated()
-        .to_slice()
-        .delimited_by(just('"'), just('"'))
-        .boxed()
-}
-
-fn line_comment<'i>() -> Parsed<'i, ()> {
-    text::inline_whitespace() // indentation
-        .ignore_then(
-            just("//")
-                .then(just('/').not())
-                .then_ignore(text::inline_whitespace().or_not()),
-        )
-        .ignore_then(any().and_is(text::newline().not()).repeated())
-        .then(text::newline().or(end()))
-        .ignored()
-        .boxed()
-}
-
-fn block_comment<'i>() -> Parsed<'i, ()> {
-    text::inline_whitespace() // indentation
-        .ignore_then(just("/*"))
-        .ignore_then(just("*/").not().repeated())
-        .then_ignore(just("*/"))
-        .boxed()
-}
-
-fn empty_line<'i>() -> Parsed<'i, ()> {
-    text::inline_whitespace()
-        .then(text::newline())
-        .ignored()
-        .boxed()
-}
-
-#[test]
-fn test_empty_line() {
-    assert!(empty_line().parse("").into_result().is_err());
-    assert!(empty_line().parse(" ").into_result().is_err());
-    assert!(empty_line().parse("\n").into_result().is_ok());
-    assert!(empty_line().parse(" \n").into_result().is_ok());
-    assert!(empty_line().parse("hola").into_result().is_err());
-    assert!(empty_line().parse("hola\n").into_result().is_err());
-}
-
-fn comment<'i>() -> Parsed<'i, ()> {
-    choice((
-        empty_line(),
-        line_comment(),
-        block_comment(),
-    )).boxed()
-}
-
-fn doc<'i>() -> Parsed<'i, String> {
-    text::inline_whitespace() // indentation
-        .ignore_then(just("///").then_ignore(text::inline_whitespace()))
-        .ignore_then(any().and_is(text::newline().not()).repeated().to_slice())
-        .separated_by(text::newline())
-        .allow_trailing()
-        .collect::<Vec<&'i str>>()
-        .map(|v| v.join("\n"))
-        .then(just('\n').or_not())
-        .validate(|(doc, newline): (String, Option<char>), e, emitter| {
-            if newline.is_some() {
-                emitter.emit(Rich::custom(
-                    e.span(),
-                    "empty line found, documentation must be adjacent",
-                ));
-            }
-            doc
+    pub fn err<T>(
+        start: usize,
+        end: usize,
+        msg: impl Into<Str<'static>>,
+    ) -> std::result::Result<T, Self> {
+        Err(Self {
+            start,
+            end,
+            msg: msg.into(),
         })
-        .boxed()
+    }
+
+    pub fn msg(&self) -> &str {
+        &self.msg
+    }
 }
 
-fn indentation<'i>() -> Parsed<'i, usize> {
-    just(' ').repeated().count().boxed()
+impl<'a> From<Error<'a>> for Vec<Error<'a>> {
+    fn from(e: Error<'a>) -> Self {
+        vec![e]
+    }
 }
 
-fn language_fn<'i>() -> Parsed<'i, (usize, Language)> {
-    let lang_ident = any()
-        .filter(|c: &char| !c.is_whitespace())
-        .repeated()
-        .to_slice();
-    let cmd = choice((text::keyword("fn"), text::keyword("cmd")));
-    let language = cmd.clone().to(Language::default()).or(lang_ident
-        .try_map(|s: &str, span| s.parse::<Language>().map_err(|e| Rich::custom(span, e)))
-        .then_ignore(text::whitespace().at_least(1))
-        .then_ignore(cmd.map_err(|e| error(e, "expected 'fn' or 'cmd'"))));
-
-    indentation().then(language).then_ignore(text::whitespace()).boxed()
+#[derive(Debug, Clone, PartialEq)]
+struct Parser<'i> {
+    input: &'i str,
+    pos: usize,
+    errors: Vec<Error<'i>>,
 }
 
-fn fn_ident<'i>() -> Parsed<'i, &'i str> {
-    let start = any()
-        // Use try_map over filter to get a better error on failure
-        .try_map(|c: char, span| {
-            c.is_ident_start().and_ok_or(
-                c,
-                Rich::custom(span, fmt!("an identifier cannot start with {c:?}")),
-            )
-        });
-
-    let next = any()
-        // This error never appears due to `repeated` so can use `filter`
-        .filter(|c: &char| c.is_ident_continue() || *c == '-')
-        .repeated();
-
-    start.then(next).to_slice().boxed()
+#[derive(Debug, PartialEq)]
+struct Checkpoint<'input, 'reference> {
+    parser: &'reference mut Parser<'input>,
+    checkpoint: usize,
 }
 
-fn args<'i>() -> Parsed<'i, Vec<&'i str>> {
-    fn_ident()
-        .separated_by(text::whitespace().at_least(1))
-        .allow_trailing()
-        .collect()
-        .delimited_by(
-            just('(').padded().expect("expected '(' before arguments"),
-            just(')').expect("expected ')' after arguments"),
-        )
-        .boxed()
+macro_rules! pinput {
+    ($self:ident) => {{
+        let input = $self.input;
+        let pos = $self.pos;
+        input.get(pos..).unwrap_or_default()
+    }};
 }
 
-/* fn body<'i>(indent: usize) -> Parsed<'i, &'i str> {
-    // ([^ '{' '}'] / "{" body() "}")*
-
-    /*     let body = recursive(|body| {
-        choice((
-            none_of("{}").to_slice(),
-            just('{').then(body).then(just('}')).to_slice(),
-        ))
-        .repeated()
-        .to_slice()
-    });
-
-    just('{')
-        .ignore_then(body)
-        .then_with_ctx(then)
-        .then_ignore(just('}'))
-        // .map(|b: &str| b.trim()) TODO: Check if it really needs to be removed
-        .boxed() */
-    let end = just(' ').repeated().configure(|cfg, indent: &usize| cfg.exactly(*indent)).then(just('}'));
-
-    just('{')
-        .ignore_then(any().and_is(end.not()).repeated().to_slice())
-        .then_ignore(end)
-        .boxed()
-} */
-
-fn signature<'i>() -> Parsed<'i, ((usize, Language), &'i str, Vec<&'i str>)> {
-    language_fn()
-        .then(fn_ident().padded().labelled("command name"))
-        .then(args())
-        .map(|((lang, name), args)| (lang, name, args))
-        .boxed()
-}
-
-fn command<'i>() -> Parsed<'i, (&'i str, Command<'i>)> {
-    let inline_body = {
-        let end = just('}')
-            .ignore_then(text::inline_whitespace())
-            .ignore_then(just('\n').ignored().or(end()));
-
-        let any = any()
-            .and_is(choice((text::newline(), end)).not())
-            .repeated()
-            .to_slice();
-        just('{')
-            .ignore_then(text::inline_whitespace())
-            .ignore_then(any)
-            .then_ignore(end)
+macro_rules! pchars {
+    ($self:ident) => {
+        $self.input.get($self.pos..).unwrap_or_default().chars()
     };
-    let body = {
-        let end = just(' ')
-            .repeated()
-            .configure(|cfg, (_, indent, _, _, _)| {
-                cfg.exactly(*indent)
-            })
-            .then(just('}'));
-
-        let line: Boxed<'_, '_, _, &str, _> = any()
-            .and_is(text::newline().not())
-            .repeated()
-            .then(just('\n'))
-            .to_slice()
-            .boxed();
-
-        let lines = end.not().then(line).repeated().to_slice();
-
-        let multiline = just('{')
-            .ignore_then(text::inline_whitespace())
-            .ignore_then(just('\n'))
-            .ignore_then(lines)
-            .then_ignore(end)
-            .then_ignore(text::inline_whitespace())
-            .then_ignore(just('\n').ignored().or(chumsky::prelude::end()));
-        
-        choice((multiline, inline_body))
-    };
-    doc()
-        .then(signature())
-        .map(|(doc, ((indent, lang), name, args))| (doc, indent, lang, name, args))
-        .then_ignore(text::inline_whitespace())
-        .then_with_ctx(body.labelled("command body"))
-        .map(|((doc, _, lang, name, args), script)| {
-            (name, Command::new(name, doc, lang, args, script))
-        })
-        .boxed()
 }
 
-fn subcommand<'i>(runfile: Parsed<'i, Runfile<'i>>) -> Parsed<'i, (&'i str, Runfile<'i>)> {
-    doc()
-        .then_ignore(text::keyword("sub").padded().expect("expected 'sub'"))
-        .then(fn_ident().padded().expect("expected subcommand name"))
-        .then_ignore(just('{').expect("expected '{'"))
-        .then(runfile.padded())
-        .then_ignore(just('}').expect("expected '}'"))
-        .map(|((doc, name), runfile)| (name, runfile.with_doc(doc)))
-        .boxed()
-}
+impl<'i> Parser<'i> {
+    pub const fn new(input: &'i str) -> Self {
+        Self {
+            input,
+            pos: 0,
+            errors: Vec::new(),
+        }
+    }
 
-fn include<'i>() -> Parsed<'i, (&'i str, Runfile<'i>)> {
-    doc()
-        .then_ignore(text::inline_whitespace())
-        .then_ignore(text::keyword("in"))
-        .then_ignore(text::inline_whitespace())
-        .then(any().and_is(text::newline().not()).repeated().to_slice())
-        .validate(|(doc, path), e, emitter| {
-            let path = path.trim();
-            if path.is_empty() {
-                emitter.emit(Rich::custom(e.span(), "expected path to include"));
-                return ("", Runfile::default());
-            }
+    pub fn with_pos(input: &'i str, pos: usize) -> Self {
+        Self {
+            input,
+            pos,
+            errors: Vec::new(),
+        }
+    }
 
-            if !doc.is_empty() {
-                emitter.emit(Rich::custom(e.span(), "includes cannot have documentation"));
-            }
+    pub fn input(&self) -> &str {
+        self.input.get(self.pos..).unwrap_or_default()
+    }
 
-            // TODO: Protect against circular includes
-            // TODO: Remove leak (although string is alive until the end of the program, so it shouldn't be a problem)
-            // TODO: Read relative to the current file instead of the current directory
-            let file = match std::fs::read_to_string(path) {
-                Ok(s) => s.leak(),
-                Err(err) => {
-                    emitter.emit(Rich::custom(e.span(), fmt!("{err}")));
-                    return (path, Runfile::default());
-                }
-            };
-            let runfile = match runfile().parse(file).into_result() {
-                Ok(r) => r,
-                Err(errors) => {
-                    let errors = errors
-                        .into_iter()
-                        .map(|e| fmt!("{e:?}"))
-                        .fold(fmt!("include {path} has errors:"), |acc, s| {
-                            fmt!("{acc}\n{s}")
-                        });
-                    emitter.emit(Rich::custom(e.span(), errors));
-                    Runfile::default()
-                }
-            };
+    pub fn chars(&'i self) -> std::str::Chars<'i> {
+        self.input().chars()
+    }
 
-            (path, runfile)
-        })
-        .boxed()
-}
+    pub fn checkpoint<'a>(&'a mut self) -> Checkpoint<'i, 'a> {
+        Checkpoint::new(self)
+    }
 
-pub fn runfile<'i>() -> Parsed<'i, Runfile<'i>> {
-    enum Results<'i> {
-        Command((&'i str, Command<'i>)),
-        Subcommand((&'i str, Runfile<'i>)),
-        Include((&'i str, Runfile<'i>)),
+    pub fn ok<'a, E>(&'a mut self) -> Result<&'a mut Self, E> {
+        Ok(self)
+    }
+
+    pub fn err<T>(mut self, msg: impl Into<Str<'i>>) -> Result<T, Self> {
+        self.errors.push(Error::new(self.pos, self.pos, msg));
+        Err(self)
+    }
+
+    pub fn peek_char_is<'a>(
+        &'a mut self,
+        is: impl FnOnce(char) -> bool,
+    ) -> Result<&'a mut Self, &'a mut Self> {
+        let c = self.chars().next();
+        if c.is_some_and(is) {
+            return Ok(self);
+        } else {
+            return Err(self);
+        }
+    }
+
+    pub fn peek_is(
+        &'i mut self,
+        is: impl FnOnce(&'i str) -> bool,
+    ) -> Result<&'i mut Self, &'i mut Self> {
+        if is(pinput!(self)) {
+            return Ok(self);
+        } else {
+            return Err(self);
+        }
     }
     
-    // Ignore empty lines
-    recursive(|runfile| {
-            choice((
-                include().map(Results::Include),
-                subcommand(runfile.boxed()).map(Results::Subcommand),
-                command().map(Results::Command),
-            ))
-            .separated_by(comment().repeated())
-            .allow_leading()
-            .allow_trailing()
-            .collect::<Vec<Results<'i>>>()
-            .map(|results| {
-                results
-                    .into_iter()
-                    .fold(Runfile::default(), |mut acc, new| match new {
-                        Results::Command((name, cmd)) => {
-                            acc.commands.insert(name, cmd);
-                            acc
-                        }
-                        Results::Subcommand((name, sub)) => {
-                            acc.subcommands.insert(name, sub);
-                            acc
-                        }
-                        Results::Include((path, include)) => {
-                            // TODO: Avoid clones
-                            acc.commands.extend(include.commands.clone());
-                            acc.subcommands.extend(include.subcommands.clone());
-                            acc.includes.insert(path, include);
-                            acc
-                        }
-                    })
-            })
-    })
-    .boxed()
+    pub fn ignore<'a>(&'a mut self, s: &str) -> Result<&'a mut Self, &'a mut Self> {
+        let mut c = self.checkpoint();
+
+        let chars = s.chars().map(Some).chain(std::iter::once(None));
+        let input = c.chars().map(Some).chain(std::iter::once(None));
+
+        for (c1, c2) in chars.zip(input) {
+            let len = match c1 {
+                Some(c) => c,
+                None => break,
+            };
+            if c1 != c2 {
+                return c.err_rewind(fmt!("Expected '{}'", s));
+            }
+            c.increment(len);
+        }
+
+        Ok(c.discard())
+    }
+
+    pub fn ignore_char(&mut self, ignore: char) -> Result<&mut Self, &mut Self> {
+        let c = self.checkpoint();
+        let next = c.chars().next();
+        if next != Some(ignore) {
+            return c.err_rewind(fmt!("Expected '{}'", ignore));
+        }
+        Ok(c.discard())
+    }
+
+    /// Skips all the whitespace characters until the next newline.
+    ///
+    /// Does not skip the newline.
+    pub fn skip_inline_whitespace(&mut self) -> &mut Self {
+        let _ = self.consume_until(|c| c == '\n' || !c.is_whitespace());
+        self
+    }
+
+    /// Skips all the whitespace characters specified by [`char::is_whitespace`].
+    ///
+    /// Includes newlines.
+    pub fn skip_whitespace(&mut self) -> &mut Self {
+        let _ = self.consume_while(char::is_whitespace);
+        self
+    }
+
+    pub fn consume_while(&mut self, while_fn: impl Fn(char) -> bool) -> &'i str {
+        let start = self.pos;
+        for c in pchars!(self) {
+            if !while_fn(c) {
+                break;
+            }
+            self.pos += c.len_utf8();
+        }
+        self.input.get(start..self.pos).unwrap_or_default()
+    }
+
+    pub fn consume_until(&mut self, until: impl Fn(char) -> bool) -> &'i str {
+        self.consume_while(|c| !until(c))
+    }
+
+    pub fn keyword<'a>(&'a mut self, keyword: &str) -> Result<&'a mut Self, &'a mut Self> {
+        let c = self.checkpoint();
+        println!("input left: {:?}", c.input());
+        let c = c.ignore(keyword)?;
+        println!("input left: {:?}", c.input());
+        let c = c.peek_char_is(|c| match c {
+            Some(c) => !c.is_alphabetic(),
+            None => true,
+        })?;
+        println!("input left: {:?}", c.input());
+
+        c.discard_ok()
+    }
 }
 
-trait ParserExt<'i, T>: Parser<'i, &'i str, T, Error<'i>>
-where
-    Self: Sized,
+impl<'input, 'reference> Checkpoint<'input, 'reference> {
+    pub fn new(parser: &'reference mut Parser<'input>) -> Self {
+        let pos = parser.pos;
+        Self {
+            parser,
+            checkpoint: pos,
+        }
+    }
+
+    pub fn new_with_checkpoint(parser: &'reference mut Parser<'input>, checkpoint: usize) -> Self {
+        Self { parser, checkpoint }
+    }
+
+    /// Returns the current parser position.
+    pub fn pos(&self) -> usize {
+        self.parser.pos
+    }
+
+    pub fn increment(&mut self, c: char) {
+        self.parser.pos += c.len_utf8();
+    }
+
+    /// Returns the number of characters visited since this checkpoint.
+    pub fn visited(&self) -> usize {
+        self.pos() - self.checkpoint
+    }
+
+    pub fn consumed(&self) -> &'input str {
+        self.parser
+            .input
+            .get(self.checkpoint..self.pos())
+            .unwrap_or_default()
+    }
+
+    /// Returns the current available input.
+    pub fn input(&self) -> &'input str {
+        self.parser.input.get(self.parser.pos..).unwrap_or_default()
+    }
+
+    /// Returns the current available input as a `Chars` iterator.
+    pub fn chars(&self) -> std::str::Chars<'input> {
+        self.input().chars()
+    }
+
+    pub fn ok<E>(self) -> Result<Self, E> {
+        Ok(self)
+    }
+
+    pub fn err<T>(self, msg: impl Into<Str<'input>>) -> Result<T, Self> {
+        self.parser
+            .errors
+            .push(Error::new(self.checkpoint, self.pos(), msg));
+        Err(self)
+    }
+
+    /// Rewinds the parser to the last checkpoint and returns the previous position.
+    pub fn rewind(&mut self) -> usize {
+        std::mem::replace(&mut self.parser.pos, self.checkpoint)
+    }
+
+    /// Discards the checkpoint and returns the parser without rewinding.
+    pub fn discard(self) -> &'reference mut Parser<'input> {
+        let Checkpoint {
+            parser,
+            checkpoint: _,
+        } = self;
+        parser
+    }
+
+    pub fn discard_ok<E>(self) -> Result<&'reference mut Parser<'input>, E> {
+        Ok(self.discard())
+    }
+
+    /// Discards the checkpoint, rewinds the parser and returns it.
+    pub fn rewind_discard(mut self) -> (usize, &'reference mut Parser<'input>) {
+        (self.rewind(), self.parser)
+    }
+
+    /// If `self == Err`, discards the checkpoint, rewinds the parser and adds an error to the parser.
+    pub fn err_rewind<T>(
+        self,
+        msg: impl Into<Str<'input>>,
+    ) -> Result<T, &'reference mut Parser<'input>> {
+        let start = self.checkpoint;
+        let (end, parser) = self.rewind_discard();
+        parser.errors.push(Error::new(start, end, msg));
+        Err(parser)
+    }
+
+    pub fn peek_char_is(self, is: impl FnOnce(Option<char>) -> bool) -> Result<Self, Self> {
+        if is(self.chars().next()) {
+            Ok(self)
+        } else {
+            Err(self)
+        }
+    }
+
+    pub fn peek_is(self, is: impl FnOnce(&'input str) -> bool) -> Result<Self, Self> {
+        let input = self.input();
+        if is(input) {
+            Ok(self)
+        } else {
+            Err(self)
+        }
+    }
+    
+    /// Ignores the given string if it matches the input.
+    /// 
+    /// Returns `Err` if the input does not match.
+    pub fn ignore(self, s: &str) -> Result<Self, Self> {
+        self.with_parser(|p| p.ignore(s))
+    }
+    
+    /// Ignores the given char if it matches the input.
+    /// 
+    /// Returns `Err` if the input does not match.
+    pub fn ignore_char(self, ignore: char) -> Result<Self, Self> {
+        self.with_parser(|p| p.ignore_char(ignore))
+    }
+    
+    /// Skips the given string if it matches the input.
+    pub fn skip(self, s: &str) -> Self {
+        self.ignore(s).unwrap_ignore()
+    }
+    
+    /// Skips the given char if it matches the input.
+    pub fn skip_char(self, c: char) -> Self {
+        self.ignore_char(c).unwrap_ignore()
+    }
+
+    /// Skips all the whitespace characters until the next newline.
+    ///
+    /// Does not consume the newline.
+    pub fn skip_inline_whitespace(self) -> Self {
+        match self.consume_until(|c| c == '\n' || !c.is_whitespace()) {
+            Ok((_, c)) => c,
+            Err(c) => c,
+        }
+    }
+
+    /// Skips all the whitespace characters [`'\n', '\r', '\t', ' '`]
+    pub fn skip_whitespace(self) -> Self {
+        match self.consume_while(char::is_whitespace) {
+            Ok((_, c)) => c,
+            Err(c) => c,
+        }
+    }
+
+    pub fn consume_while(self, while_fn: impl Fn(char) -> bool) -> Result<(&'input str, Self), Self> {
+        let s = self.parser.consume_while(while_fn);
+        if s.is_empty() {
+            return Err(self);
+        }
+        Ok((s, self))
+    }
+
+    pub fn consume_until(self, until: impl Fn(char) -> bool) -> Result<(&'input str, Self), Self> {
+        self.consume_while(|c| !until(c))
+    }
+
+    pub fn consume_recursive(
+        self,
+        recursive: impl Fn(Self) -> Result<(&'input str, Self), Self>,
+    ) -> Result<(Vec<&'input str>, Self), Self> {
+        
+        let mut lines = Vec::new();
+        println!("starting recursion: {:?}", self);
+        // If first iteration fails, return the error.
+        let mut result = match recursive(self) {
+            Ok((s, c)) => {
+                lines.push(s);
+                Ok(c) 
+            },
+            Err(e) => Err(e),
+        }?;
+        
+        // Continue until an error is found.
+        loop {
+            println!("iteration: {:?}", result);
+            match recursive(result) {
+                Ok((s, c)) => { 
+                    lines.push(s);
+                    result = c 
+                },
+                Err(e) => break result = e,
+            }
+        };
+        println!("result: {:?}", result);
+        Ok((lines, result))
+    }
+
+    pub fn keyword(self, keyword: &str) -> Result<Self, &'reference mut Parser<'input>> {
+        let c = self.with_parser(|p| p.keyword(keyword))?;
+        Ok(c)
+    }
+
+    /// Executes the given function with the parser and returns the result.
+    ///
+    /// Keeps the current checkpoint and advances the parser even if it fails.
+    fn with_parser(
+        self,
+        with: impl FnOnce(
+            &'reference mut Parser<'input>,
+        )
+            -> Result<&'reference mut Parser<'input>, &'reference mut Parser<'input>>,
+    ) -> Result<Self, Self> {
+        match with(self.parser) {
+            Ok(ok) => {
+                Ok(Self {
+                    parser: ok,
+                    checkpoint: self.checkpoint,
+                })
+            },
+            Err(err) => {
+                Err(Self {
+                    parser: err,
+                    checkpoint: self.checkpoint,
+                })
+            },
+        }
+    }
+}
+
+/* impl Drop for Checkpoint<'_, '_> {
+    fn drop(&mut self) {
+        self.parser.pos = self.checkpoint;
+    }
+} */
+
+impl<'input> AsRef<Parser<'input>> for Checkpoint<'input, '_> {
+    fn as_ref(&self) -> &Parser<'input> {
+        self.parser
+    }
+}
+
+impl<'input> AsMut<Parser<'input>> for Checkpoint<'input, '_> {
+    fn as_mut(&mut self) -> &mut Parser<'input> {
+        self.parser
+    }
+}
+
+fn doc<'input>(parser: &mut Parser<'input>) -> Result<Vec<&'input str>, ()> {
+    let (s, _) = parser.checkpoint().consume_recursive(|c| {
+        let (line, c) = c.skip_inline_whitespace()
+            .ignore("///")?
+            .skip_inline_whitespace()
+            .consume_until(|c: char| c == '\n')?;
+        Ok((line, c.skip_char('\n')))
+    })?;
+    Ok(s)
+}
+
+pub fn runfile<'input>(input: &'input str) -> Result<Runfile<'input>, Vec<Error<'input>>> {
+    let mut parser: Parser<'input> = Parser::new(input);
+    let doc: Vec<&'input str> = doc(&mut parser).unwrap_or_default();
+    parser.skip_whitespace();
+    Ok(Runfile::default())
+}
+
+trait ResultExt<T, E> {
+    fn ignore(self) -> Result<(), E>;
+    fn ignore_err(self) -> Result<T, ()>;
+}
+
+impl<T, E> ResultExt<T, E> for Result<T, E> {
+    fn ignore(self) -> Result<(), E> {
+        self.map(|_| ())
+    }
+
+    fn ignore_err(self) -> Result<T, ()> {
+        self.map_err(|_| ())
+    }
+}
+
+trait ResultSameExt<T> {
+    fn unwrap_ignore(self) -> T;
+}
+
+impl <T> ResultSameExt<T> for Result<T, T> {
+    /// Unwraps the result, ignoring the error.
+    fn unwrap_ignore(self) -> T {
+        match self {
+            Ok(ok) => ok,
+            Err(err) => err,
+        }
+    }
+}
+
+trait ErrCheckpointExt<'input, 'reference, T> {
+    type Checkpoint;
+    type Parser;
+
+    fn rewind_if_err(self) -> Result<T, Self::Parser>;
+}
+
+impl<'input, 'reference, T> ErrCheckpointExt<'input, 'reference, T>
+    for Result<T, Checkpoint<'input, 'reference>>
 {
-    fn expect(
-        self,
-        msg: impl AsRef<str>,
-    ) -> chumsky::combinator::MapErr<Self, impl Fn(Rich<'i, char>) -> Rich<'i, char>> {
-        self.map_err(move |e: Rich<'i, char>| Rich::custom(*e.span(), msg.as_ref()))
-    }
+    type Checkpoint = Checkpoint<'input, 'reference>;
+    type Parser = &'reference mut Parser<'input>;
 
-    fn expect_with_start(
-        self,
-        msg: impl AsRef<str>,
-        start: usize,
-    ) -> chumsky::combinator::MapErr<Self, impl Fn(Rich<'i, char>) -> Rich<'i, char>> {
-        self.map_err(move |e: Rich<'i, char>| {
-            Rich::custom((start..e.span().end()).into(), msg.as_ref())
-        })
+    fn rewind_if_err(self) -> Result<T, Self::Parser> {
+        match self {
+            Ok(ok) => Ok(ok),
+            Err(err) => Err(err.rewind_discard().1),
+        }
     }
 }
-impl<'i, P, T> ParserExt<'i, T> for P where P: Parser<'i, &'i str, T, Error<'i>> {}
 
+/* /// Creates a new checkpoint.
+impl<'input, 'reference> From<&'reference mut Parser<'input>> for Checkpoint<'input, 'reference> {
+    fn from(parser: &'reference mut Parser<'input>) -> Self {
+        Checkpoint::new(parser)
+    }
+} */
+
+/// Rewinds the parser to the last checkpoint.
+impl<'input, 'reference> From<Checkpoint<'input, 'reference>> for &'reference mut Parser<'input> {
+    fn from(c: Checkpoint<'input, 'reference>) -> Self {
+        c.rewind_discard().1
+    }
+}
+
+impl From<Checkpoint<'_, '_>> for () {
+    fn from(c: Checkpoint<'_, '_>) -> Self {
+        c.rewind_discard();
+    }
+}
+
+impl From<&'_ mut Parser<'_>> for () {
+    fn from(_: &'_ mut Parser<'_>) -> Self {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn starts_with() {
+        let p = || Parser::new("hello");
+        assert!(p().ignore("").is_ok());
+        assert!(p().ignore("h").is_ok());
+        assert!(p().ignore("he").is_ok());
+        assert!(p().ignore("hel").is_ok());
+        assert!(p().ignore("hell").is_ok());
+        assert!(p().ignore("hello").is_ok());
+        assert!(p().ignore("hello!").is_err());
+
+        let mut parser = Parser::new("123456789");
+        assert!(parser.ignore("1").is_ok());
+        assert!(parser.ignore("23").is_ok());
+        assert!(parser.ignore("456").is_ok());
+        assert!(parser.ignore("111").is_err());
+        assert!(parser.ignore("788").is_err());
+        assert!(parser.ignore("7890").is_err());
+        assert!(parser.ignore("789").is_ok());
+    }
+
+    #[test]
+    fn keyword() {
+        let k = |i, k| {
+            assert!(
+                Parser::new(i).keyword(k).is_ok(),
+                "{k:?} is NOT a keyword of {i:?}"
+            );
+        };
+        let e = |i, k| {
+            assert!(
+                Parser::new(i).keyword(k).is_err(),
+                "{k:?} IS a keyword of {i:?}"
+            );
+        };
+        k("if", "if");
+        k("if ", "if");
+        k("if(", "if");
+        k("if a", "if");
+        e("ifa", "if");
+        e("rifa", "if");
+
+        let input = "cmd";
+        let mut parser = Parser::new(input);
+        assert!(parser.keyword("c").is_err());
+        assert!(parser.keyword("cm").is_err());
+        assert!(parser.keyword("cmdd").is_err());
+        assert!(parser.keyword("cmd").is_ok());
+    }
+
+    #[test]
+    fn doc() {
+        use super::doc;
+        let k = |i, k: &[&str]| {
+            assert_eq!(doc(&mut Parser::new(i)), Ok(Vec::from(k)));
+        };
+        let e = |i| {
+            assert_eq!(doc(&mut Parser::new(i)), Err(()));
+        };
+
+        k("/// hola", &["hola"]);
+        k("/// hola\n", &["hola"]);
+        k("/// hola\n/// patata\n", &["hola\npatata"]);
+        e("///");
+        e("/// hola\n\n/// patata");
+        e("/// hola\n/// patata\n\n");
+    }
+}
+
+/*
 #[cfg(test)]
 mod test {
     use std::collections::HashMap;
 
     use crate::{command::Command, lang::Language, runfile::Runfile};
-    use chumsky::Parser as _;
 
     #[test]
     fn doc() {
@@ -529,7 +795,7 @@ mod test {
             actual_command,
             expected_command
         );
-        
+
         let expected_command = Command::new(
             "multiline",
             "multiline command".into(),
@@ -539,9 +805,9 @@ mod test {
         );
         let actual_command = command()
             .parse(
-                
+
 r#"/// multiline command
-sh fn multiline(name) { 
+sh fn multiline(name) {
   echo 'Hello, $name.sh';
 }"#,
             )
@@ -636,10 +902,10 @@ r#"/// multiline command
             .parse(
                 r#"
             /// Greets the user
-            bash fn greet(name) { 
+            bash fn greet(name) {
                 echo "Hello, $name.sh";
             }
-            
+
             // This is a comment without doc
             fn pata (name age) {
                 echo "Hello, $name.sh";
@@ -672,7 +938,7 @@ r#"/// multiline command
             .parse(
                 r#"sub subcommand {
                 /// Greets the user
-                sh fn greet(name) { 
+                sh fn greet(name) {
                     echo "Hello, $name.sh";
                 }
             }"#,
@@ -686,3 +952,4 @@ r#"/// multiline command
         );
     }
 }
+ */

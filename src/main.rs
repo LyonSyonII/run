@@ -21,7 +21,7 @@ fn main() -> std::io::Result<()> {
     };
 
     let (file, input) = get_file(&mut args);
-    let runfile = match parser::runfile().parse(&input).into_result() {
+    let runfile = match parser::runfile(&input) {
         Ok(r) => r,
         Err(errors) => {
             print_errors(errors, file, &input)?;
@@ -65,7 +65,7 @@ fn print_help() {
 }
 
 fn print_errors<'a>(
-    errors: impl AsRef<[Rich<'a, char>]>,
+    errors: impl AsRef<[parser::Error<'a>]>,
     file: impl AsRef<str>,
     input: impl AsRef<str>,
 ) -> std::io::Result<()> {
@@ -74,11 +74,11 @@ fn print_errors<'a>(
 
     for e in errors {
         let file = file.as_ref();
-        ariadne::Report::build(ReportKind::Error, file, e.span().start)
-            .with_message(e.to_string())
+        ariadne::Report::build(ReportKind::Error, file, e.start)
+            .with_message(e.msg())
             .with_label(
-                Label::new((file, e.span().into_range()))
-                    .with_message(e.reason().fg(Color::Red))
+                Label::new((file, e.start..e.end))
+                    .with_message(e.msg().fg(Color::Red))
                     .with_color(colors.next()),
             )
             .finish()
