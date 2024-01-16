@@ -7,7 +7,7 @@ use utils::OptionExt as _;
 
 mod command;
 mod lang;
-mod parser;
+mod parsing;
 mod runfile;
 mod strlist;
 mod utils;
@@ -21,7 +21,7 @@ fn main() -> std::io::Result<()> {
     };
 
     let (file, input) = get_file(&mut args);
-    let runfile = match parser::runfile(&input) {
+    let runfile = match parsing::runfile(&input) {
         Ok(r) => r,
         Err(errors) => {
             print_errors(errors, file, &input)?;
@@ -65,7 +65,7 @@ fn print_help() {
 }
 
 fn print_errors<'a>(
-    errors: impl AsRef<[parser::Error<'a>]>,
+    errors: impl AsRef<[parsing::error::Error<'a>]>,
     file: impl AsRef<str>,
     input: impl AsRef<str>,
 ) -> std::io::Result<()> {

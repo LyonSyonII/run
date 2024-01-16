@@ -3,6 +3,15 @@ use crate::{
 };
 pub use std::format as fmt;
 
+type ParserResult<'r, 'i, T> = Result<ParserOk<'r, 'i, T>, ParserErr<'r, 'i>>;
+type ParserResultIgnore<'r, 'i> = Result<&'r mut Parser<'i>, ParserErr<'r, 'i>>;
+type ParserOk<'r, 'i, T> = (T, &'r mut Parser<'i>);
+type ParserErr<'r, 'i> = (Error<'i>, &'r mut Parser<'i>);
+type CheckpointResult<'r, 'i, T> = Result<CheckpointOk<'r, 'i, T>, CheckpointErr<'r, 'i>>;
+type CheckpointResultIgnore<'r, 'i> = Result<Checkpoint<'r, 'i>, CheckpointErr<'r, 'i>>;
+type CheckpointOk<'r, 'i, T> = (T, Checkpoint<'i, 'r>);
+type CheckpointErr<'r, 'i> = (Error<'i>, Checkpoint<'i, 'r>);
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Error<'i> {
     pub start: usize,
@@ -18,7 +27,7 @@ impl<'i> Error<'i> {
             msg: msg.into(),
         }
     }
-
+    
     pub fn err<T>(
         start: usize,
         end: usize,
@@ -30,19 +39,19 @@ impl<'i> Error<'i> {
             msg: msg.into(),
         })
     }
-
+    
     pub fn msg(&self) -> &str {
         &self.msg
     }
 }
 
-impl<'a> From<Error<'a>> for Vec<Error<'a>> {
-    fn from(e: Error<'a>) -> Self {
+impl<'i> From<Error<'i>> for Vec<Error<'i>> {
+    fn from(e: Error<'i>) -> Self {
         vec![e]
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Clone, PartialEq)]
 struct Parser<'i> {
     input: &'i str,
     pos: usize,
@@ -51,8 +60,8 @@ struct Parser<'i> {
 
 #[derive(Debug, PartialEq)]
 struct Checkpoint<'input, 'reference> {
-    parser: &'reference mut Parser<'input>,
     checkpoint: usize,
+    parser: &'reference mut Parser<'input>,
 }
 
 macro_rules! pinput {
@@ -93,46 +102,44 @@ impl<'i> Parser<'i> {
     pub fn chars(&'i self) -> std::str::Chars<'i> {
         self.input().chars()
     }
-
-    pub fn checkpoint<'a>(&'a mut self) -> Checkpoint<'i, 'a> {
+    
+    pub fn checkpoint<'r>(&'r mut self) -> Checkpoint<'i, 'r> {
         Checkpoint::new(self)
     }
 
-    pub fn ok<'a, E>(&'a mut self) -> Result<&'a mut Self, E> {
+    pub fn ok<'r, E>(&'r mut self) -> Result<&'r mut Self, E> {
         Ok(self)
     }
 
-    pub fn err<T>(mut self, msg: impl Into<Str<'i>>) -> Result<T, Self> {
-        self.errors.push(Error::new(self.pos, self.pos, msg));
-        Err(self)
+    pub fn err<'r, T>(&'r mut self, msg: impl Into<Str<'i>>) -> Result<T, ParserErr<'r, 'i>> {
+        Err((Error::new(self.pos, self.pos, msg), self))
     }
 
-    pub fn peek_char_is<'a>(
-        &'a mut self,
-        is: impl FnOnce(char) -> bool,
-    ) -> Result<&'a mut Self, &'a mut Self> {
-        let c = self.chars().next();
-        if c.is_some_and(is) {
-            return Ok(self);
+    pub fn peek_char_is<'r>(
+        &'r mut self,
+        is: impl FnOnce(Option<char>) -> bool,
+    ) -> ParserResultIgnore<'r, 'i> {
+        if is(self.chars().next()) {
+            Ok(self)
         } else {
-            return Err(self);
+            self.err("Expected some char")
         }
     }
 
-    pub fn peek_is(
-        &'i mut self,
+    pub fn peek_is<'r>(
+        &'r mut self,
         is: impl FnOnce(&'i str) -> bool,
-    ) -> Result<&'i mut Self, &'i mut Self> {
+    ) -> Result<&'r mut Self, &'r mut Self> {
         if is(pinput!(self)) {
-            return Ok(self);
+            Ok(self)
         } else {
-            return Err(self);
+            Err(self)
         }
     }
-    
-    pub fn ignore<'a>(&'a mut self, s: &str) -> Result<&'a mut Self, &'a mut Self> {
-        let mut c = self.checkpoint();
 
+    pub fn ignore<'r>(&'r mut self, s: &str) -> ParserResultIgnore<'r, 'i> {
+        let mut c = self.checkpoint();
+        
         let chars = s.chars().map(Some).chain(std::iter::once(None));
         let input = c.chars().map(Some).chain(std::iter::once(None));
 
@@ -142,7 +149,7 @@ impl<'i> Parser<'i> {
                 None => break,
             };
             if c1 != c2 {
-                return c.err_rewind(fmt!("Expected '{}'", s));
+                return c.rewind_err(fmt!("Expected '{}'", s))?;
             }
             c.increment(len);
         }
@@ -150,13 +157,14 @@ impl<'i> Parser<'i> {
         Ok(c.discard())
     }
 
-    pub fn ignore_char(&mut self, ignore: char) -> Result<&mut Self, &mut Self> {
-        let c = self.checkpoint();
-        let next = c.chars().next();
-        if next != Some(ignore) {
-            return c.err_rewind(fmt!("Expected '{}'", ignore));
+    /// Matches the given char and ignores it.
+    ///
+    /// Reverse of [`Parser::consume`].
+    pub fn ignore_char<'r>(&'r mut self, ignore: char) -> ParserResultIgnore<'r, 'i> {
+        match self.consume_char(ignore) {
+            Ok((_, p)) => Ok(p),
+            Err(e) => Err(e),
         }
-        Ok(c.discard())
     }
 
     /// Skips all the whitespace characters until the next newline.
@@ -175,6 +183,23 @@ impl<'i> Parser<'i> {
         self
     }
 
+    /// Consumes the given `char` if it matches the input.
+    ///
+    /// Rewinds if the input does not match.
+    pub fn consume_char<'r>(&'r mut self, consume: char) -> ParserResult<'r, 'i, char> {
+        let mut c = self.checkpoint();
+        match c.chars().next() {
+            Some(found) if found != consume => {
+                c.rewind_err(fmt!("Expected '{consume}', found {found:?}"))
+            }
+            Some(found) => {
+                c.increment(found);
+                Ok((found, c.discard()))
+            }
+            None => c.rewind_err(fmt!("Expected '{consume}', found EOF")),
+        }
+    }
+
     pub fn consume_while(&mut self, while_fn: impl Fn(char) -> bool) -> &'i str {
         let start = self.pos;
         for c in pchars!(self) {
@@ -190,18 +215,27 @@ impl<'i> Parser<'i> {
         self.consume_while(|c| !until(c))
     }
 
-    pub fn keyword<'a>(&'a mut self, keyword: &str) -> Result<&'a mut Self, &'a mut Self> {
+    pub fn consume_until_included(&mut self, until: impl Fn(char) -> bool) -> &'i str {
+        let start = self.pos;
+        for c in pchars!(self) {
+            self.pos += c.len_utf8();
+            if until(c) {
+                break;
+            }
+        }
+        self.input.get(start..self.pos).unwrap_or_default()
+    }
+    
+    pub fn keyword<'r>(&'r mut self, keyword: &str) -> ParserResultIgnore<'r, 'i> {
         let c = self.checkpoint();
-        println!("input left: {:?}", c.input());
-        let c = c.ignore(keyword)?;
-        println!("input left: {:?}", c.input());
-        let c = c.peek_char_is(|c| match c {
-            Some(c) => !c.is_alphabetic(),
-            None => true,
-        })?;
-        println!("input left: {:?}", c.input());
-
-        c.discard_ok()
+        
+        c.ignore(keyword)
+            .rewind_if_err()?
+            .peek_char_is(|c| match c {
+                Some(c) => !c.is_alphabetic(),
+                None => true,
+            })
+            .discard_or_rewind()
     }
 }
 
@@ -253,11 +287,17 @@ impl<'input, 'reference> Checkpoint<'input, 'reference> {
         Ok(self)
     }
 
-    pub fn err<T>(self, msg: impl Into<Str<'input>>) -> Result<T, Self> {
-        self.parser
-            .errors
-            .push(Error::new(self.checkpoint, self.pos(), msg));
-        Err(self)
+    /// Returns `Err` with the given error and the Checkpoint.
+    pub fn err<T>(
+        self,
+        msg: impl Into<Str<'input>>,
+    ) -> Result<T, CheckpointErr<'reference, 'input>> {
+        Err((Error::new(self.checkpoint, self.pos(), msg), self))
+    }
+
+    /// Updates the checkpoint to the current parser position.
+    pub fn update_checkpoint(&mut self) {
+        self.checkpoint = self.pos();
     }
 
     /// Rewinds the parser to the last checkpoint and returns the previous position.
@@ -265,7 +305,18 @@ impl<'input, 'reference> Checkpoint<'input, 'reference> {
         std::mem::replace(&mut self.parser.pos, self.checkpoint)
     }
 
-    /// Discards the checkpoint and returns the parser without rewinding.
+    /// Rewinds the parser to the last checkpoint and adds `msg` to the errors.
+    ///
+    /// Returns `Err` with the parser.
+    pub fn rewind_err<T>(
+        self,
+        msg: impl Into<Str<'input>>,
+    ) -> Result<T, (Error<'input>, &'reference mut Parser<'input>)> {
+        let (end, parser) = self.rewind_discard();
+        Err((Error::new(parser.pos, end, msg), parser))
+    }
+
+    /// Discards the `Checkpoint` and returns the `Parser` without rewinding.
     pub fn discard(self) -> &'reference mut Parser<'input> {
         let Checkpoint {
             parser,
@@ -274,34 +325,37 @@ impl<'input, 'reference> Checkpoint<'input, 'reference> {
         parser
     }
 
+    /// Discards the `Checkpoint` and returns `Ok` with the `Parser` without rewinding.
     pub fn discard_ok<E>(self) -> Result<&'reference mut Parser<'input>, E> {
         Ok(self.discard())
     }
 
-    /// Discards the checkpoint, rewinds the parser and returns it.
+    /// Discards the `Checkpoint` and returns `Err` with the specified error and the `Parser` without rewinding.
+    pub fn discard_err<T>(
+        self,
+        msg: impl Into<Str<'input>>,
+    ) -> Result<T, ParserErr<'reference, 'input>> {
+        Err((Error::new(self.checkpoint, self.pos(), msg), self.discard()))
+    }
+
+    /// Discards the `Checkpoint`, rewinds the `Parser` and returns it with the last position before the rewind.
     pub fn rewind_discard(mut self) -> (usize, &'reference mut Parser<'input>) {
         (self.rewind(), self.parser)
     }
 
-    /// If `self == Err`, discards the checkpoint, rewinds the parser and adds an error to the parser.
-    pub fn err_rewind<T>(
+    /// Returns `Ok` if the given function returns true for the next character.
+    ///
+    /// Does not advance the parser.
+    pub fn peek_char_is(
         self,
-        msg: impl Into<Str<'input>>,
-    ) -> Result<T, &'reference mut Parser<'input>> {
-        let start = self.checkpoint;
-        let (end, parser) = self.rewind_discard();
-        parser.errors.push(Error::new(start, end, msg));
-        Err(parser)
+        is: impl FnOnce(Option<char>) -> bool,
+    ) -> CheckpointResultIgnore<'reference, 'input> {
+        self.with_parser_ignore(|p| p.peek_char_is(is))
     }
 
-    pub fn peek_char_is(self, is: impl FnOnce(Option<char>) -> bool) -> Result<Self, Self> {
-        if is(self.chars().next()) {
-            Ok(self)
-        } else {
-            Err(self)
-        }
-    }
-
+    /// Returns `Ok` if the given function returns true for the current input.
+    ///
+    /// Does not advance the parser.
     pub fn peek_is(self, is: impl FnOnce(&'input str) -> bool) -> Result<Self, Self> {
         let input = self.input();
         if is(input) {
@@ -310,26 +364,26 @@ impl<'input, 'reference> Checkpoint<'input, 'reference> {
             Err(self)
         }
     }
-    
+
     /// Ignores the given string if it matches the input.
-    /// 
+    ///
     /// Returns `Err` if the input does not match.
-    pub fn ignore(self, s: &str) -> Result<Self, Self> {
-        self.with_parser(|p| p.ignore(s))
+    pub fn ignore(self, s: &str) -> CheckpointResultIgnore<'reference, 'input> {
+        self.with_parser_ignore(|p| p.ignore(s))
     }
-    
+
     /// Ignores the given char if it matches the input.
-    /// 
+    ///
     /// Returns `Err` if the input does not match.
-    pub fn ignore_char(self, ignore: char) -> Result<Self, Self> {
-        self.with_parser(|p| p.ignore_char(ignore))
+    pub fn ignore_char(self, ignore: char) -> CheckpointResultIgnore<'reference, 'input> {
+        self.with_parser_ignore(|p| p.ignore_char(ignore))
     }
-    
+
     /// Skips the given string if it matches the input.
     pub fn skip(self, s: &str) -> Self {
         self.ignore(s).unwrap_ignore()
     }
-    
+
     /// Skips the given char if it matches the input.
     pub fn skip_char(self, c: char) -> Self {
         self.ignore_char(c).unwrap_ignore()
@@ -353,7 +407,10 @@ impl<'input, 'reference> Checkpoint<'input, 'reference> {
         }
     }
 
-    pub fn consume_while(self, while_fn: impl Fn(char) -> bool) -> Result<(&'input str, Self), Self> {
+    pub fn consume_while(
+        self,
+        while_fn: impl Fn(char) -> bool,
+    ) -> Result<(&'input str, Self), Self> {
         let s = self.parser.consume_while(while_fn);
         if s.is_empty() {
             return Err(self);
@@ -361,69 +418,150 @@ impl<'input, 'reference> Checkpoint<'input, 'reference> {
         Ok((s, self))
     }
 
+    /// Consumes characters until the given function returns true.
+    ///
+    /// Returns the consumed characters and the new checkpoint.
+    ///
+    /// Does not consume the character that returned true.
     pub fn consume_until(self, until: impl Fn(char) -> bool) -> Result<(&'input str, Self), Self> {
         self.consume_while(|c| !until(c))
     }
 
+    /// Consumes characters until the given function returns true.
+    ///
+    /// Returns the consumed characters and the new checkpoint.
+    ///
+    /// Consumes the character that returned true.
+    pub fn consume_until_included(
+        self,
+        until: impl Fn(char) -> bool,
+    ) -> CheckpointResult<'reference, 'input, &'input str> {
+        let s = self.parser.consume_until_included(until);
+        if s.is_empty() {
+            return self.err("");
+        }
+        Ok((s, self))
+    }
+
     pub fn consume_recursive(
         self,
-        recursive: impl Fn(Self) -> Result<(&'input str, Self), Self>,
-    ) -> Result<(Vec<&'input str>, Self), Self> {
-        
+        recursive: impl Fn(Self) -> CheckpointResult<'reference, 'input, &'input str>,
+    ) -> CheckpointResult<'reference, 'input, Vec<&'input str>> {
         let mut lines = Vec::new();
-        println!("starting recursion: {:?}", self);
         // If first iteration fails, return the error.
         let mut result = match recursive(self) {
             Ok((s, c)) => {
                 lines.push(s);
-                Ok(c) 
-            },
+                Ok(c)
+            }
             Err(e) => Err(e),
         }?;
-        
+
         // Continue until an error is found.
         loop {
-            println!("iteration: {:?}", result);
             match recursive(result) {
-                Ok((s, c)) => { 
+                Ok((s, c)) => {
                     lines.push(s);
-                    result = c 
-                },
-                Err(e) => break result = e,
+                    result = c
+                }
+                Err((_, c)) => break result = c,
             }
-        };
-        println!("result: {:?}", result);
+        }
         Ok((lines, result))
     }
 
-    pub fn keyword(self, keyword: &str) -> Result<Self, &'reference mut Parser<'input>> {
-        let c = self.with_parser(|p| p.keyword(keyword))?;
+    pub fn keyword(self, keyword: &str) -> Result<Self, ParserErr<'reference, 'input>> {
+        let c = self
+            .with_parser_ignore(|p| p.keyword(keyword))
+            .rewind_if_err()?;
         Ok(c)
     }
-
+    
     /// Executes the given function with the parser and returns the result.
     ///
-    /// Keeps the current checkpoint and advances the parser even if it fails.
-    fn with_parser(
+    /// Keeps the current checkpoint.
+    /// 
+    /// Equivalent to:
+    /// ```ignore
+    /// match with(parser) {
+    ///     Ok((t, parser)) => Ok((
+    ///         t,
+    ///         Self {
+    ///             parser,
+    ///             checkpoint: self.checkpoint // Keep checkpoint
+    ///         },
+    ///     )),
+    ///     Err((err, parser)) => Err((
+    ///         err,
+    ///         Self {
+    ///             parser,
+    ///             checkpoint: self.checkpoint // Keep checkpoint
+    ///         },
+    ///     )),
+    /// }
+    /// ```
+    fn with_parser<T>(
         self,
-        with: impl FnOnce(
-            &'reference mut Parser<'input>,
-        )
-            -> Result<&'reference mut Parser<'input>, &'reference mut Parser<'input>>,
-    ) -> Result<Self, Self> {
+        with: impl FnOnce(&'reference mut Parser<'input>) -> ParserResult<'reference, 'input, T>,
+    ) -> CheckpointResult<'reference, 'input, T> {
         match with(self.parser) {
-            Ok(ok) => {
-                Ok(Self {
-                    parser: ok,
+            Ok((t, parser)) => Ok((
+                t,
+                Self {
+                    parser,
                     checkpoint: self.checkpoint,
-                })
-            },
-            Err(err) => {
-                Err(Self {
-                    parser: err,
+                },
+            )),
+            Err((err, parser)) => Err((
+                err,
+                Self {
+                    parser,
                     checkpoint: self.checkpoint,
-                })
-            },
+                },
+            )),
+        }
+    }
+
+    /// Executes the given function with the parser and returns `Ok` if it was successful.
+    ///
+    /// Keeps the current checkpoint.
+    /// 
+    /// Equivalent to:
+    /// ```
+    /// match with(parser) {
+    ///     Ok(parser) => Ok(
+    ///         Parser {
+    ///             parser,
+    ///             checkpoint: self.checkpoint // Keep checkpoint
+    ///         },
+    ///     ),
+    ///     Err((err, parser)) => Err((
+    ///         err,
+    ///         Parser {
+    ///             parser,
+    ///             checkpoint: self.checkpoint // Keep checkpoint
+    ///         },
+    ///     )),
+    /// }
+    /// ```
+    fn with_parser_ignore(
+        self,
+        with: impl FnOnce(&'reference mut Parser<'input>) -> ParserResultIgnore<'reference, 'input>,
+    ) -> CheckpointResultIgnore<'reference, 'input> {
+        match with(self.parser) {
+            Ok(parser) => Ok(
+                Self {
+                    parser,
+                    checkpoint: self.checkpoint,
+                },
+            ),
+            Err((err, parser)) => Err((
+                err,
+                Self {
+                    parser,
+                    checkpoint: self.checkpoint,
+                },
+            )),
         }
     }
 }
@@ -434,48 +572,89 @@ impl<'input, 'reference> Checkpoint<'input, 'reference> {
     }
 } */
 
-impl<'input> AsRef<Parser<'input>> for Checkpoint<'input, '_> {
-    fn as_ref(&self) -> &Parser<'input> {
+impl<'i> AsRef<Parser<'i>> for Checkpoint<'i, '_> {
+    fn as_ref(&self) -> &Parser<'i> {
         self.parser
     }
 }
 
-impl<'input> AsMut<Parser<'input>> for Checkpoint<'input, '_> {
-    fn as_mut(&mut self) -> &mut Parser<'input> {
+impl<'i> AsMut<Parser<'i>> for Checkpoint<'i, '_> {
+    fn as_mut(&mut self) -> &mut Parser<'i> {
         self.parser
     }
 }
 
-fn doc<'input>(parser: &mut Parser<'input>) -> Result<Vec<&'input str>, ()> {
-    let (s, _) = parser.checkpoint().consume_recursive(|c| {
-        let (line, c) = c.skip_inline_whitespace()
-            .ignore("///")?
-            .skip_inline_whitespace()
-            .consume_until(|c: char| c == '\n')?;
-        Ok((line, c.skip_char('\n')))
-    })?;
+fn doc<'i, 'r: 'i>(parser: &'r mut Parser<'i>) -> Result<Vec<&'i str>, Error<'i>> {
+    let (s, c) = parser
+        .checkpoint()
+        .consume_recursive(|c| {
+            let (line, c) = c
+                .skip_inline_whitespace()
+                .ignore("///")?
+                .skip_inline_whitespace()
+                .consume_until_included(|c: char| c == '\n')?;
+            Ok((line.trim(), c))
+        })
+        .map_err(|(e, _)| e)?;
+
+    if let Ok(c) = c.ignore_char('\n') {
+        return c
+            .discard_err("Documentation comments must be adjacent to the documented item")
+            .map_err(|(e, _)| e);
+    };
+
     Ok(s)
 }
 
 pub fn runfile<'input>(input: &'input str) -> Result<Runfile<'input>, Vec<Error<'input>>> {
-    let mut parser: Parser<'input> = Parser::new(input);
+    let mut parser = Parser::new(input);
     let doc: Vec<&'input str> = doc(&mut parser).unwrap_or_default();
-    parser.skip_whitespace();
+    // parser.skip_whitespace();
     Ok(Runfile::default())
 }
 
 trait ResultExt<T, E> {
     fn ignore(self) -> Result<(), E>;
     fn ignore_err(self) -> Result<T, ()>;
+    fn into_ignore_tuple(self) -> Result<((), T), E>;
+    fn into_ignore_tuple_err(self) -> Result<T, ((), E)>;
 }
-
 impl<T, E> ResultExt<T, E> for Result<T, E> {
+    /// Converts a `Result<T, E>` into a `Result<(), E>`.
     fn ignore(self) -> Result<(), E> {
         self.map(|_| ())
     }
-
+    /// Converts a `Result<T, E>` into a `Result<T, ()>`.
     fn ignore_err(self) -> Result<T, ()> {
         self.map_err(|_| ())
+    }
+    /// Converts a `Result<T, E>` into a `Result<((), T), E>`.
+    fn into_ignore_tuple(self) -> Result<((), T), E> {
+        self.map(|t| ((), t))
+    }
+    /// Converts a `Result<T, E>` into a `Result<T, ((), E)>`.
+    fn into_ignore_tuple_err(self) -> Result<T, ((), E)> {
+        self.map_err(|e| ((), e))
+    }
+}
+
+trait ResultIgnoreOkExt<T, E> {
+    fn from_ignore_tuple(self) -> Result<T, E>;
+}
+impl<T, E> ResultIgnoreOkExt<T, E> for Result<((), T), E> {
+    /// Converts a `Result<((), T), E>` into a `Result<T, E>`.
+    fn from_ignore_tuple(self) -> Result<T, E> {
+        self.map(|(_, t)| t)
+    }
+}
+
+trait ResultIgnoreErrExt<T, E> {
+    fn from_ignore_tuple_err(self) -> Result<T, E>;
+}
+impl<T, E> ResultIgnoreErrExt<T, E> for Result<T, ((), E)> {
+    /// Converts a `Result<((), T), E>` into a `Result<T, E>`.
+    fn from_ignore_tuple_err(self) -> Result<T, E> {
+        self.map_err(|(_, e)| e)
     }
 }
 
@@ -483,7 +662,7 @@ trait ResultSameExt<T> {
     fn unwrap_ignore(self) -> T;
 }
 
-impl <T> ResultSameExt<T> for Result<T, T> {
+impl<T> ResultSameExt<T> for Result<T, T> {
     /// Unwraps the result, ignoring the error.
     fn unwrap_ignore(self) -> T {
         match self {
@@ -493,26 +672,127 @@ impl <T> ResultSameExt<T> for Result<T, T> {
     }
 }
 
-trait ErrCheckpointExt<'input, 'reference, T> {
-    type Checkpoint;
-    type Parser;
-
-    fn rewind_if_err(self) -> Result<T, Self::Parser>;
+trait ResultIgnoreExt<'r, 'i, T> {
+    fn unwrap_ignore(self) -> T;
 }
 
-impl<'input, 'reference, T> ErrCheckpointExt<'input, 'reference, T>
-    for Result<T, Checkpoint<'input, 'reference>>
-{
-    type Checkpoint = Checkpoint<'input, 'reference>;
-    type Parser = &'reference mut Parser<'input>;
-
-    fn rewind_if_err(self) -> Result<T, Self::Parser> {
+impl<'r, 'i> ResultIgnoreExt<'r, 'i, &'r mut Parser<'i>> for ParserResultIgnore<'r, 'i> {
+    /// Unwraps [`ParserResultIgnore`], ignoring the error and returning the [`Parser`].
+    fn unwrap_ignore(self) -> &'r mut Parser<'i> {
         match self {
-            Ok(ok) => Ok(ok),
-            Err(err) => Err(err.rewind_discard().1),
+            Ok(c) => c,
+            Err((_, c)) => c,
         }
     }
 }
+
+impl<'r, 'i> ResultIgnoreExt<'r, 'i, Checkpoint<'i, 'r>> for CheckpointResultIgnore<'r, 'i> {
+    /// Unwraps [`CheckpointResultIgnore`], ignoring the error and returning the [`Checkpoint`].
+    fn unwrap_ignore(self) -> Checkpoint<'i, 'r> {
+        match self {
+            Ok(c) => c,
+            Err((_, c)) => c,
+        }
+    }
+}
+
+trait CheckpointResultExt<'r, 'i> {
+    type CheckpointOk;
+    type CheckpointErr;
+    type ParserOk;
+    type ParserErr;
+    
+    fn rewind_if_err(self) -> Result<Self::CheckpointOk, Self::ParserErr>;
+    fn discard_result(self) -> Result<Self::ParserOk, Self::ParserErr>;
+    fn discard_or_rewind(self) -> Result<Self::ParserOk, Self::ParserErr>;
+}
+
+impl<'r: 'i, 'i, T> CheckpointResultExt<'r, 'i> for CheckpointResult<'r, 'i, T> {
+    type CheckpointOk = CheckpointOk<'r, 'i, T>;
+    type CheckpointErr = CheckpointErr<'r, 'i>;
+    type ParserOk = ParserOk<'r, 'i, T>;
+    type ParserErr = ParserErr<'r, 'i>;
+
+    fn rewind_if_err(self) -> Result<Self::CheckpointOk, Self::ParserErr> {
+        match self {
+            Ok((t, c)) => Ok((t, c)),
+            Err((e, c)) => Err((e, c.rewind_discard().1)),
+        }
+    }
+
+    fn discard_or_rewind(self) -> Result<Self::ParserOk, Self::ParserErr> {
+        match self {
+            Ok((t, c)) => Ok((t, c.discard())),
+            Err((e, c)) => Err((e, c.rewind_discard().1)),
+        }
+    }
+    
+    fn discard_result(self) -> Result<Self::ParserOk, Self::ParserErr> {
+        match self {
+            Ok((t, c)) => Ok((t, c.discard())),
+            Err((e, c)) => Err((e, c.discard())),
+        }
+    }
+}
+
+impl<'r: 'i, 'i> CheckpointResultExt<'r, 'i> for CheckpointResultIgnore<'r, 'i> {
+    type CheckpointOk = Checkpoint<'i, 'r>;
+    type CheckpointErr = CheckpointErr<'r, 'i>;
+    type ParserOk = &'r mut Parser<'i>;
+    type ParserErr = ParserErr<'r, 'i>;
+
+    fn rewind_if_err(self) -> Result<Self::CheckpointOk, Self::ParserErr> {
+        match self {
+            Ok(c) => Ok(c),
+            Err((e, c)) => Err((e, c.rewind_discard().1)),
+        }
+    }
+    
+    fn discard_result(self) -> Result<Self::ParserOk, Self::ParserErr> {
+        match self {
+            Ok(c) => Ok(c.discard()),
+            Err((e, c)) => Err((e, c.discard())),
+        }
+    }
+    
+    fn discard_or_rewind(self) -> Result<Self::ParserOk, Self::ParserErr> {
+        match self {
+            Ok(c) => Ok(c.discard()),
+            Err((e, c)) => Err((e, c.rewind_discard().1)),
+        }
+    }
+}
+
+/* trait ErrCheckpointExt<T> {
+    type Ok;
+    type Err;
+    type ParserErr;
+    
+    fn rewind_if_err(self) -> Result<T, Self::ParserErr>;
+    fn discard_if_err(self) -> Result<T, Self::ParserErr>;
+} */
+
+/* impl<'r, 'i, T> ErrCheckpointExt<T>
+    for Result<T, CheckpointErr<'r, 'i>>
+{
+    type Ok = CheckpointOk<'r, 'i, T>;
+    type Err = CheckpointErr<'r, 'i>;
+    type ParserErr = ParserErr<'r, 'i>;
+    
+    fn rewind_if_err(self) -> Result<T, Self::ParserErr> {
+        match self {
+            Ok(ok) => Ok(ok),
+            Err((err, c)) => Err((err, c.rewind_discard().1)),
+        }
+    }
+
+    fn discard_if_err(self) -> Result<T, Self::ParserErr> {
+        match self {
+            Ok(ok) => Ok(ok),
+            Err((err, c)) => Err((err, c.discard())),
+        }
+    }
+} */
 
 /* /// Creates a new checkpoint.
 impl<'input, 'reference> From<&'reference mut Parser<'input>> for Checkpoint<'input, 'reference> {
@@ -521,21 +801,31 @@ impl<'input, 'reference> From<&'reference mut Parser<'input>> for Checkpoint<'in
     }
 } */
 
-/// Rewinds the parser to the last checkpoint.
-impl<'input, 'reference> From<Checkpoint<'input, 'reference>> for &'reference mut Parser<'input> {
-    fn from(c: Checkpoint<'input, 'reference>) -> Self {
-        c.rewind_discard().1
-    }
-}
-
-impl From<Checkpoint<'_, '_>> for () {
-    fn from(c: Checkpoint<'_, '_>) -> Self {
-        c.rewind_discard();
-    }
-}
-
 impl From<&'_ mut Parser<'_>> for () {
     fn from(_: &'_ mut Parser<'_>) -> Self {}
+}
+
+impl From<std::convert::Infallible> for Parser<'_> {
+    fn from(_: std::convert::Infallible) -> Self {
+        unreachable!()
+    }
+}
+
+impl From<std::convert::Infallible> for Checkpoint<'_, '_> {
+    fn from(_: std::convert::Infallible) -> Self {
+        unreachable!()
+    }
+}
+
+impl std::fmt::Debug for Parser<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Parser")
+            .field("input", &self.input)
+            .field("pos", &self.pos)
+            .field("input_left", &self.input())
+            .field("errors", &self.errors)
+            .finish()
+    }
 }
 
 #[cfg(test)]
@@ -543,7 +833,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn starts_with() {
+    fn ignore() {
         let p = || Parser::new("hello");
         assert!(p().ignore("").is_ok());
         assert!(p().ignore("h").is_ok());
@@ -561,6 +851,28 @@ mod tests {
         assert!(parser.ignore("788").is_err());
         assert!(parser.ignore("7890").is_err());
         assert!(parser.ignore("789").is_ok());
+    }
+
+    #[test]
+    fn ignore_char() {
+        let p = || Parser::new("hello");
+        assert!(p().ignore_char('h').is_ok());
+        assert!(p().ignore_char('e').is_ok());
+        assert!(p().ignore_char('l').is_ok());
+        assert!(p().ignore_char('o').is_ok());
+        assert!(p().ignore_char('!').is_err());
+
+        let mut parser = Parser::new("123456789");
+        assert!(parser.ignore_char('1').is_ok());
+        assert!(parser.ignore_char('2').is_ok());
+        assert!(parser.ignore_char('3').is_ok());
+        assert!(parser.ignore_char('4').is_ok());
+        assert!(parser.ignore_char('5').is_ok());
+        assert!(parser.ignore_char('6').is_ok());
+        assert!(parser.ignore_char('7').is_ok());
+        assert!(parser.ignore_char('8').is_ok());
+        assert!(parser.ignore_char('9').is_ok());
+        assert!(parser.ignore_char('0').is_err());
     }
 
     #[test]
@@ -596,18 +908,38 @@ mod tests {
     fn doc() {
         use super::doc;
         let k = |i, k: &[&str]| {
-            assert_eq!(doc(&mut Parser::new(i)), Ok(Vec::from(k)));
+            assert_eq!(doc(&mut Parser::new(i)), Ok(Vec::from(k)), "{:?}", i);
         };
         let e = |i| {
-            assert_eq!(doc(&mut Parser::new(i)), Err(()));
+            assert_eq!(doc(&mut Parser::new(i)), Err(()), "{:?}", i);
         };
 
-        k("/// hola", &["hola"]);
-        k("/// hola\n", &["hola"]);
-        k("/// hola\n/// patata\n", &["hola\npatata"]);
+        k("/// comment", &["comment"]);
+        k("/// comment\n", &["comment"]);
+        k("/// comment\n/// docs\n", &["comment", "docs"]);
         e("///");
-        e("/// hola\n\n/// patata");
-        e("/// hola\n/// patata\n\n");
+        e("/// comment\n\n/// docs");
+        e("/// comment\n/// docs\n\n");
+
+        let mut parser = Parser::new("/// comment\n/// docs\n\n///comment2\n\n///comment3");
+        let k = |p: &mut Parser, k: &[&str]| {
+            let p2 = p.clone();
+            assert_eq!(doc(p), Ok(Vec::from(k)), "{:#?}", p2);
+        };
+        let e = |p: &mut Parser, span: std::ops::RangeInclusive<usize>| {
+            let p2 = p.clone();
+            assert_eq!(doc(p), Err(()), "{:#?}", p2);
+            let expected = p.errors.last().unwrap();
+            let p2 = p.clone();
+            assert!(
+                expected.start == *span.start() && expected.end == *span.end(),
+                "{p2:#?}{expected:#?}\n{span:#?}"
+            )
+        };
+        e(&mut parser, 0..=21);
+        e(&mut parser, 22..=34);
+        k(&mut parser, &["comment3"]);
+        e(&mut parser, 46..=46);
     }
 }
 
