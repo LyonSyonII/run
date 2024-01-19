@@ -1,5 +1,4 @@
 use ariadne::{sources, Color, ColorGenerator, Fmt, Label, Report, ReportKind, Source};
-use chumsky::{error::Rich, Parser as _};
 use colored::Colorize as _;
 pub use std::format as fmt;
 use strlist::Str;
@@ -7,10 +6,11 @@ use utils::OptionExt as _;
 
 mod command;
 mod lang;
-mod parsing;
 mod runfile;
 mod strlist;
 mod utils;
+mod parser;
+mod error;
 
 fn main() -> std::io::Result<()> {
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -21,10 +21,11 @@ fn main() -> std::io::Result<()> {
     };
 
     let (file, input) = get_file(&mut args);
-    let runfile = match parsing::runfile(&input) {
+    let runfile = match parser::runfile(&input) {
         Ok(r) => r,
-        Err(errors) => {
-            print_errors(errors, file, &input)?;
+        Err(e) => {
+            // print_errors(errors, file, &input)?;
+            println!("{e}");
             std::process::exit(1);
         }
     };
@@ -64,29 +65,29 @@ fn print_help() {
     );
 }
 
-fn print_errors<'a>(
-    errors: impl AsRef<[parsing::error::Error]>,
-    file: impl AsRef<str>,
-    input: impl AsRef<str>,
-) -> std::io::Result<()> {
-    let errors = errors.as_ref();
-    let mut colors = ColorGenerator::new();
-
-    for e in errors {
-        let file = file.as_ref();
-        ariadne::Report::build(ReportKind::Error, file, e.start)
-            .with_message(e.msg())
-            .with_label(
-                Label::new((file, e.start..e.end))
-                    .with_message(e.msg().fg(Color::Red))
-                    .with_color(colors.next()),
-            )
-            .finish()
-            .eprint((file, Source::from(&input)))?;
-    }
-
-    Ok(())
-}
+// fn print_errors<'a>(
+//     errors: impl AsRef<[error::Error]>,
+//     file: impl AsRef<str>,
+//     input: impl AsRef<str>,
+// ) -> std::io::Result<()> {
+//     let errors = errors.as_ref();
+//     let mut colors = ColorGenerator::new();
+    
+//     for e in errors {
+//         let file = file.as_ref();
+//         ariadne::Report::build(ReportKind::Error, file, e.start)
+//             .with_message(e.msg())
+//             .with_label(
+//                 Label::new((file, e.start..e.end))
+//                     .with_message(e.msg().fg(Color::Red))
+//                     .with_color(colors.next()),
+//             )
+//             .finish()
+//             .eprint((file, Source::from(&input)))?;
+//     }
+    
+//     Ok(())
+// }
 
 fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
     if let Some(file) = read_pipe::read_pipe() {

@@ -14,7 +14,7 @@
       devShells.${system}.default = mkShell {
         inherit nixpkgs;
         buildInputs = with pkgs.buildPackages; [
-          corepack_latest
+          nodePackages.pnpm
           nodejs
           rustup
           sccache
