@@ -150,11 +150,11 @@ impl<'i> Runfile<'i> {
         for (name, sub) in subcommands {
             let mut doc = sub.doc(name, parents);
             // let name = f!(" {:lang_indent$} {:·<name_indent$}", "", f!("{name} ")).bright_cyan().bold();
-            let name = f!(" {:·<indent$}", f!("{name} ")).bright_cyan().bold();
+            let name = f!(" {:·<indent$}·", f!("{name} ")).bright_cyan().bold();
             writeln!(to, "{name} {}", doc.pop_front().unwrap()).map_err(op)?;
             for l in doc {
                 // writeln!(to, " {:lang_indent$} {:name_indent$} {l}", "", "").map_err(op)?;
-                writeln!(to, " {:indent$} {l}", "").map_err(op)?;
+                writeln!(to, " {:indent$}  {l}", "").map_err(op)?;
             }
         }
 

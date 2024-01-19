@@ -1,8 +1,18 @@
 // This is a comment
+
+/* Hola */
+
 /// This is documentation
-js cmd default() {{
+sha cmd r() {{
   function hello() {
     console.log("hello world");
   }
   hello();
 }}
+
+
+sub p {
+  cmd default() {
+    echo holis;
+  }
+}

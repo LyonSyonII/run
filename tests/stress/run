@@ -4,7 +4,7 @@ cmd default() {
   echo "$doc"
 }
 
-py cmd gen_subcommands() {
+py cmd gen_subcommands() {{{
   with open("stress-subcommands", "w") as file:
     file.write("cmd default() { echo 'Testing parsing a lot of subcommands' }\n")
     
@@ -17,11 +17,11 @@ py cmd gen_subcommands() {
       
       file.write(f"/// This is a subcommand{" inside a subcommand" * i}\ncmd {"sub" * i+1} {{ echo Hello from a {"sub" * i+1}command! }}\n")
       gen_subcommands(depth + 1, max_depth)
-}
+}}}
 
-py cmd gen_long() {
+py cmd gen_long() {{{
   with open("stress-long", "w") as file:
     file.write("cmd default() { echo 'Testing parsing a very long file' }")
     for i in range(10_000_000):
       file.write(f"cmd _{i} {{ echo {i} }}\n")
-}
+}}}

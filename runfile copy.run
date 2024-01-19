@@ -23,12 +23,12 @@ py cmd py(name) {
 }
 
 // Any code is valid in the command's body as long as it's valid in the command's language
-js cmd js(name) {
+js cmd js(name) {{
   function greet() {
     console.log("Hello $name from Javascript!");
   }
   greet();
-}
+}}
 
 // Not only interpreted languages are supported, you can also use compiled languages
 // These get compiled when the specific command is called for the first time
