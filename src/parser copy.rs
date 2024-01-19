@@ -121,11 +121,11 @@ impl<'i> Parser<'i> {
         }
         self.input.get(start..self.pos).unwrap_or_default()
     }
-
+    
     pub fn consume_until(&mut self, until: impl Fn(char) -> bool) -> &'i str {
         self.consume_while(|c| !until(c))
     }
-
+    
     pub fn consume_until_included(&mut self, until: impl Fn(char) -> bool) -> &'i str {
         let start = self.pos;
         for c in pchars!(self) {

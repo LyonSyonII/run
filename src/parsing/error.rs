@@ -1,13 +1,15 @@
 use crate::strlist::Str;
 
+pub type Error = ParseError<'static>;
+
 #[derive(Debug, Clone, PartialEq)]
-pub struct Error<'i> {
+pub struct ParseError<'i> {
     pub start: usize,
     pub end: usize,
     msg: Str<'i>,
 }
 
-impl<'i> Error<'i> {
+impl<'i> ParseError<'i> {
     pub fn new(start: usize, end: usize, msg: impl Into<Str<'i>>) -> Self {
         Self {
             start,
@@ -33,8 +35,8 @@ impl<'i> Error<'i> {
     }
 }
 
-impl<'i> From<Error<'i>> for Vec<Error<'i>> {
-    fn from(e: Error<'i>) -> Self {
+impl<'i> From<ParseError<'i>> for Vec<ParseError<'i>> {
+    fn from(e: ParseError<'i>) -> Self {
         vec![e]
     }
 }

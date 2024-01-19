@@ -11,7 +11,7 @@ use super::{checkpoint::Checkpoint, error::Error};
 pub struct Parser<'i> {
     pub(super) input: &'i str,
     pub(super) pos: usize,
-    pub(super) errors: Vec<Error<'i>>,
+    pub(super) errors: Vec<Error>,
 }
 
 impl<'i> Parser<'i> {
@@ -39,14 +39,14 @@ impl<'i> Parser<'i> {
     pub fn chars(&'i self) -> std::str::Chars<'i> {
         self.input().chars()
     }
-/*     pub fn checkpoint<'r>(&'r mut self) -> Checkpoint<'r, 'i, &'r mut Self> {
+    /*     pub fn checkpoint<'r>(&'r mut self) -> Checkpoint<'r, 'i, &'r mut Self> {
         Checkpoint::new(self)
     } */
 }
 
 impl<'r, 'i> super::functions::ParseFunctions<'r, 'i> for &'r mut Parser<'i> {
-    fn input(&self) -> &'i str {
-        self.input.get(self.pos..).unwrap_or_default()
+    fn input_raw(&self) -> &'i str {
+        self.input
     }
     fn chars(&self) -> std::str::Chars<'i> {
         self.input().chars()

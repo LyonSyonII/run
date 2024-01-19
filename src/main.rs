@@ -65,7 +65,7 @@ fn print_help() {
 }
 
 fn print_errors<'a>(
-    errors: impl AsRef<[parsing::error::Error<'a>]>,
+    errors: impl AsRef<[parsing::error::Error]>,
     file: impl AsRef<str>,
     input: impl AsRef<str>,
 ) -> std::io::Result<()> {

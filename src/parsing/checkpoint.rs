@@ -22,13 +22,19 @@
 /// let mut parser = checkpoint.discard();
 /// ```
 #[derive(Debug, PartialEq)]
-pub struct Checkpoint<'reference, 'input, P> where P: super::functions::ParseFunctions<'reference, 'input> {
+pub struct Checkpoint<'reference, 'input, P>
+where
+    P: super::functions::ParseFunctions<'reference, 'input>,
+{
     checkpoint: usize,
     parser: P,
-    _marker: std::marker::PhantomData<&'reference mut &'input ()>, 
+    _marker: std::marker::PhantomData<&'reference mut &'input ()>,
 }
 
-impl<'r, 'i, P> Checkpoint<'r, 'i, P> where P: super::functions::ParseFunctions<'r, 'i> {
+impl<'r, 'i, P> Checkpoint<'r, 'i, P>
+where
+    P: super::functions::ParseFunctions<'r, 'i>,
+{
     /// Creates a new checkpoint for the given parser.
     ///
     /// # Arguments
@@ -42,7 +48,7 @@ impl<'r, 'i, P> Checkpoint<'r, 'i, P> where P: super::functions::ParseFunctions<
         Self {
             checkpoint: parser.pos(),
             parser,
-            _marker: std::marker::PhantomData
+            _marker: std::marker::PhantomData,
         }
     }
 
@@ -76,9 +82,12 @@ impl<'r, 'i, P> Checkpoint<'r, 'i, P> where P: super::functions::ParseFunctions<
     }
 }
 
-impl<'r, 'i, P> super::functions::ParseFunctions<'r, 'i> for Checkpoint<'r, 'i, P> where P: super::functions::ParseFunctions<'r, 'i> {
-    fn input(&self) -> &'i str {
-        self.parser.input()
+impl<'r, 'i, P> super::functions::ParseFunctions<'r, 'i> for Checkpoint<'r, 'i, P>
+where
+    P: super::functions::ParseFunctions<'r, 'i>,
+{
+    fn input_raw(&self) -> &'i str {
+        self.parser.input_raw()
     }
     fn chars(&self) -> std::str::Chars<'i> {
         self.parser.chars()
@@ -92,7 +101,7 @@ impl<'r, 'i, P> super::functions::ParseFunctions<'r, 'i> for Checkpoint<'r, 'i, 
     fn pos_mut(&'r mut self) -> &'r mut usize {
         self.parser.pos_mut()
     }
-    fn set_pos(&mut self, pos: usize)  {
+    fn set_pos(&mut self, pos: usize) {
         self.parser.set_pos(pos);
     }
 }
