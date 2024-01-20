@@ -82,6 +82,8 @@ impl<'i> Runfile<'i> {
         commands.sort_by(|a, b| {
             if a.name() == "default" {
                 std::cmp::Ordering::Less
+            } else if b.name() == "default" {
+                std::cmp::Ordering::Greater
             } else {
                 a.name().cmp(b.name())
             }
