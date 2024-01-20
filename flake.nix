@@ -14,14 +14,14 @@
       devShells.${system}.default = mkShell {
         inherit nixpkgs;
         buildInputs = with pkgs.buildPackages; [
-          corepack_latest
+          nodePackages.pnpm
           nodejs
           rustup
           sccache
-          python311
+          # python311
         ];
         shellHook = ''
-          rustup install stable
+          rustup toolchain install nightly-2023-10-31 -c miri rustc-codegen-cranelift-preview rust-src rust-analyzer rustfmt clippy
         '';
       };
     };

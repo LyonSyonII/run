@@ -1,9 +1,32 @@
+cargo-features = ["codegen-backend"]
+
 [package]
-name = "run"
+name = "runfile"
 version = "0.1.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name = "run"
+path = "src/main.rs"
+
 [dependencies]
+app_dirs2 = "2.5.5"
+ariadne = "0.4.0"
+beef = { version = "0.5.2", features = ["const_fn"] }
+colored = "2.1.0"
+md5 = "0.7.0"
 peg = "0.8.2"
+read_pipe = "0.1.2"
+which = "6.0.0"
+
+[profile.dev]
+codegen-backend = "cranelift"
+
+[profile.release]
+opt-level = 3       # Optimize for size.
+lto = true          # Enable Link Time Optimization
+codegen-units = 1   # Reduce number of codegen units to increase optimizations.
+panic = "abort"     # Abort on panic
+strip = true        # Automatically strip symbols from the binary.

@@ -1,123 +1,193 @@
-use runner::Command;
+use ariadne::{sources, Color, ColorGenerator, Fmt, Label, Report, ReportKind, Source};
+use colored::Colorize as _;
 pub use std::format as fmt;
-use std::{collections::HashMap, ops::Deref};
+use strlist::Str;
+use utils::OptionExt as _;
 
+mod command;
+mod error;
+mod lang;
 mod parser;
-mod runner;
+mod runfile;
+mod strlist;
+mod utils;
 
 fn main() -> std::io::Result<()> {
-    let runfile = get_file();
-    let runfile = parser::parse(runfile.deref()).expect("Could not parse runfile");
+    let mut args = std::env::args().skip(1).collect::<Vec<_>>();
 
-    let args = std::env::args().skip(1).collect::<Vec<_>>();
-    match args.first() {
-        Some(a) if a == "-c" || a == "--commands" => {
-            println!("Available commands:");
-            let mut commands = runfile.commands.values().collect::<Vec<_>>();
-            commands.sort_by(|a, b| {
-                if a.name == "default" {
-                    std::cmp::Ordering::Less
-                } else {
-                    a.name.cmp(b.name)
-                }
-            });
-            for cmd in commands {
-                let doc = cmd.get_doc();
-                let mut lines = doc.lines();
-                println!("  {:<10}{}", cmd.name, lines.next().unwrap());
-                for l in lines {
-                    println!("  {:<10}{}", " ", l);
-                }
-                println!()
-            }
-            return Ok(());
-        }
-        _ => {}
-    }
-    if args.first().is_some_and(|a| a == "-h" || a == "--help") {
-        println!("Runs a runfile in the current directory");
-        println!("Possible runfile names: [runfile, run, Runfile, Run]\n");
-        println!("Usage: run [COMMAND] [ARGS...]\n");
-        println!("Options:");
-        println!("  -h, --help\t\tPrints help information");
-        println!("  -c, --commands\tPrints available commands in the runfile");
+    if args.first().is_some_and_oneof(["-h", "--help"]) {
+        print_help();
         return Ok(());
-    }
+    };
 
-    match args.first().and_then(|c| runfile.commands.get(c.as_str())) {
-        Some(cmd) => cmd.run(args.first().unwrap(), args.get(1..).unwrap_or_default())?,
-        None => {
-            let cmd = runfile.commands.get("default").byefmt(|| {
-                fmt!(
-                    "Could not find default command\nAvailable commands: {:?}",
-                    runfile.commands.keys()
-                )
-            });
-            cmd.run("default", args)?;
+    let (file, input) = get_file(&mut args);
+    let runfile = match parser::runfile(&input) {
+        Ok(r) => match r {
+            Ok(r) => r,
+            Err(errors) => {
+                print_errors(errors, file, &input)?;
+                std::process::exit(1);
+            }
+        },
+        Err(e) => {
+            // print_errors(errors, file, &input)?;
+            println!("{e}");
+            std::process::exit(1);
         }
+    };
+
+    // dbg!(&runfile);
+
+    runfile.run((" ", [get_current_exe()?]), &args).unwrap();
+
+    Ok(())
+}
+
+fn print_help() {
+    println!("Runs a runfile in the current directory");
+    println!("Possible runfile names: [run, runfile] or any ending in '.run'\n");
+    println!(
+        "{} {} {}\n",
+        "Usage:".bright_green().bold(),
+        "run".bright_cyan().bold(),
+        "[COMMAND] [ARGS...]".cyan()
+    );
+    println!("{}", "Options:".bright_green().bold());
+    println!(
+        "  {}, {} {}\tRuns the specified file instead of searching for a runfile",
+        "-f".bright_cyan().bold(),
+        "--file".bright_cyan().bold(),
+        "<FILE>".cyan()
+    );
+    println!(
+        "  {}, {}\tPrints available commands in the runfile",
+        "-c".bright_cyan().bold(),
+        "--commands".bright_cyan().bold()
+    );
+    println!(
+        "  {}, {}\t\tPrints help information",
+        "-h".bright_cyan().bold(),
+        "--help".bright_cyan().bold()
+    );
+}
+
+fn print_errors(
+    errors: impl AsRef<[error::Error]>,
+    file: impl AsRef<str>,
+    input: impl AsRef<str>,
+) -> std::io::Result<()> {
+    let errors = errors.as_ref();
+    let mut colors = ColorGenerator::new();
+
+    for e in errors {
+        let file = file.as_ref();
+        ariadne::Report::build(ReportKind::Error, file, e.start)
+            .with_message(e.msg())
+            .with_label(
+                Label::new((file, e.start..e.end))
+                    .with_message(e.msg().fg(Color::Red))
+                    .with_color(colors.next()),
+            )
+            .finish()
+            .eprint((file, Source::from(&input)))?;
     }
 
     Ok(())
 }
 
-fn get_file() -> String {
-    let files = ["runfile", "run", "Runfile", "Run"];
+fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
+    if let Some(file) = read_pipe::read_pipe() {
+        return ("stdin".into(), file);
+    }
+
+    let first = args.first();
+    if first.is_some_and_oneof(["-f", "--file"]) {
+        let file = args.get(1);
+        if let Some(file) = file {
+            if let Ok(contents) = std::fs::read_to_string(file) {
+                let file = file.to_owned().into();
+                // Remove -f and the file name
+                args.drain(..=1);
+                return (file, contents);
+            }
+
+            let err = format!("Error: Could not read file '{}'", file)
+                .bright_red()
+                .bold();
+            eprintln!("{}", err);
+            std::process::exit(1);
+        }
+
+        eprintln!(
+            "{}\n{} {} {}",
+            "Error: No file specified".bright_red().bold(),
+            "Usage:".bright_green().bold(),
+            "run --file <FILE>".bright_cyan().bold(),
+            "[COMMAND] [ARGS...]".cyan()
+        );
+        std::process::exit(1);
+    }
+
+    let files = [
+        "runfile",
+        "run",
+        "Runfile",
+        "Run",
+        "runfile.run",
+        "run.run",
+        "Runfile.run",
+        "Run.run",
+    ];
     for file in files {
-        if let Ok(file) = std::fs::read_to_string(file) {
-            return file;
+        if let Ok(contents) = std::fs::read_to_string(file) {
+            return (file.into(), contents);
         }
     }
-    eprintln!("Could not find runfile");
-    eprintln!("Possible file names: {files:?}");
-    eprintln!("See `run --help` for more information");
+
+    let files = match std::fs::read_dir(".") {
+        Ok(f) => f,
+        Err(e) => {
+            eprintln!(
+                "{} {}",
+                "Error:".bright_red().bold(),
+                e.to_string().bright_red().bold()
+            );
+            std::process::exit(1);
+        }
+    };
+
+    for file in files.flatten() {
+        let path = file.path();
+        if path.extension() == Some(std::ffi::OsStr::new("run")) {
+            let name = path
+                .file_name()
+                .map(|p| p.to_string_lossy().to_string().into());
+            let contents = std::fs::read_to_string(file.path());
+
+            if let (Some(name), Ok(contents)) = (name, contents) {
+                return (name, contents);
+            }
+        }
+    }
+    eprintln!("{}", "Error: Could not find runfile".bold().bright_red());
+    eprintln!(
+        "Possible file names: [{}, {}] or any ending in {}",
+        "run".bright_purple().bold(),
+        "runfile".bright_purple().bold(),
+        ".run".bright_purple().bold()
+    );
+    eprintln!(
+        "See '{} {}' for more information",
+        "run".bright_cyan().bold(),
+        "--help".bright_cyan().bold()
+    );
     std::process::exit(1);
 }
 
-pub struct Runfile<'i> {
-    commands: HashMap<&'i str, Command<'i>>,
-}
-
-trait Goodbye<T>
-where
-    Self: Sized,
-{
-    fn bye(self, msg: impl AsRef<str>) -> T {
-        if let Some(t) = self.check() {
-            return t;
-        }
-        eprintln!("{}", msg.as_ref());
-        std::process::exit(1)
-    }
-
-    fn byefmt<S: AsRef<str>>(self, msg: impl Fn() -> S) -> T {
-        if let Some(t) = self.check() {
-            return t;
-        }
-        eprintln!("{}", msg().as_ref());
-        std::process::exit(1)
-    }
-
-    fn check(self) -> Option<T>;
-}
-
-impl<T> Goodbye<T> for Option<T> {
-    fn check(self) -> Option<T> {
-        self
-    }
-}
-
-impl<T, E> Goodbye<T> for Result<T, E> {
-    fn check(self) -> Option<T> {
-        self.ok()
-    }
-}
-
-impl Goodbye<bool> for bool {
-    fn check(self) -> Option<bool> {
-        if self {
-            Some(self)
-        } else {
-            None
-        }
-    }
+fn get_current_exe() -> std::io::Result<String> {
+    let current_exe = std::env::current_exe()?;
+    let exe_name = current_exe
+        .file_name()
+        .unwrap_or(std::ffi::OsStr::new("run"));
+    Ok(exe_name.to_string_lossy().to_string())
 }
