@@ -1,42 +1,72 @@
+use crate::command::Command;
+use crate::lang::Language;
+use crate::runfile::Runfile;
+use crate::utils::Goodbye;
+use crate::error::Error;
 pub use runfile::runfile;
 use std::collections::HashMap;
 use std::format as fmt;
-use crate::lang::Language;
-use crate::command::Command;
-use crate::runfile::Runfile;
-use crate::utils::Goodbye;
 
 enum Element<'i> {
     Command(&'i str, Command<'i>),
     Subcommand(&'i str, Runfile<'i>),
     Include(&'i str, Runfile<'i>),
+    Error(Error),
+    Errors(Vec<Error>)
 }
 
 peg::parser! {
     grammar runfile() for str {
         rule _ = [' ' | '\t' | '\n' | '\r']+
-        rule __ = ([' ' | '\t' | '\n' | '\r'] / comment())*
+        rule __ = quiet!{ ([' ' | '\t' | '\n' | '\r'] / comment())* }
         pub rule doc() -> String = c:(("///" c:$([^'\n']*){ c.trim() }) ** "\n") { c.join("\n") }
         pub rule comment() = (!"///" "//" [^'\n']*) ++ "\n" / "/*" (!"*/" [_])* "*/"
         
-        pub rule language() -> Language = !("fn"/"cmd") i:ident() { ? i.parse().or(Err("[sh, bash, rs, py, js]")) }
+        pub rule language() -> Result<Language, Error> = start:position!() i:ident() end:position!() __ ("fn"/"cmd") {
+            i.parse().map_err(|e| Error::new(e, start, end))
+        } / ("fn"/"cmd") {
+            Ok(Language::Shell)
+        } / start:position!() end:position!() {
+            Error::err("Expected language or fn/cmd", start, end)
+        }
         pub rule ident() -> &'input str = $(['a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '-']+)
         pub rule arguments() -> Vec<&'input str> = "(" v:(ident() ** " ") " "? ")" { v }
         pub rule body_start() -> usize = s:$['{']+ { s.len() }
-        pub rule body(count: usize) -> &'input str = $((!(['}']*<{count}>)[_])*)
-        pub rule command() -> Element<'input> = __ doc:doc() __ lang:(language() / { Language::Bash }) __ ("fn"/"cmd") __ name:ident() __ args:arguments() __ count:body_start() script:body(count) ['}']*<{count}> __ {
-           Element::Command(name, Command::new(name, doc, lang, args, script))
+        pub rule body(count: usize) -> &'input str = $((!(['{'|'}']*<{count}>)[_] / "{"*<1, {(count-1).max(1)}> body((count-1).max(1)) "}"*<1, {(count-1).max(1)}>)*)
+        pub rule command() -> Element<'input> = __ doc:doc() __ lang:language() __ name:ident() __ args:arguments() __ count:body_start() script:body(count) ['}']*<{count}> __ {
+           let mut errors = Vec::new();
+           let lang = match lang {
+               Ok(lang) => lang,
+               Err(e) => {
+                   errors.push(e);
+                   Language::Shell
+               }
+           };
+           
+           if errors.is_empty() {
+               let command = Command::new(name, doc, lang, args, script);
+               Element::Command(name, command)
+           } else {
+               Element::Errors(errors)
+           }
         }
         pub rule subcommand() -> Element<'input> = __ doc:doc() __ "sub" __ name:ident() __ "{" sub:runfile() "}" __ {
-            Element::Subcommand(name, sub.with_doc(doc))
+            match sub {
+                Ok(sub) => Element::Subcommand(name, sub.with_doc(doc)),
+                Err(e) => Element::Errors(e)
+            }
         }
-        pub rule include() -> Element<'input> = __ "in" _ name:$([^'\n']+) __ {
+        pub rule include() -> Element<'input> = __ "in" __ name:($([^'\n']+)) __ {
             // TODO: Remove leak
             let file = std::fs::read_to_string(name).byefmt(|| fmt!("Could not read file '{name}'")).leak();
             let include = runfile::runfile(file).byefmt(|| fmt!("Could not parse file '{name}'"));
-            Element::Include(name, include)
+            match include {
+                Ok(include) => Element::Include(name, include),
+                Err(e) => Element::Errors(e)
+            }
         }
-        pub rule runfile() -> Runfile<'input> = __ elements:(include()/subcommand()/command())* __ {
+        pub rule runfile() -> Result<Runfile<'input>, Vec<Error>> = __ elements:(include()/subcommand()/command())* __ {
+            let mut errors = Vec::new();
             let mut commands = HashMap::new();
             let mut subcommands = HashMap::new();
             let mut includes = HashMap::new();
@@ -53,14 +83,25 @@ peg::parser! {
                         commands.extend(inc.commands);
                         subcommands.extend(inc.subcommands);
                     }
+                    Element::Error(e) => {
+                        errors.push(e);
+                    }
+                    Element::Errors(e) => {
+                        errors.extend(e)
+                    }
                 }
             }
-            Runfile {
-                doc: String::new(),
-                commands,
-                subcommands,
-                includes,
+            if !errors.is_empty() {
+                return Err(errors);
             }
+            Ok(
+                Runfile {
+                    doc: String::new(),
+                    commands,
+                    subcommands,
+                    includes,
+                }
+            )
         }
     }
 }

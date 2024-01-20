@@ -1,18 +1,7 @@
-// This is a comment
-
-/* Hola */
-
-/// This is documentation
-sha cmd r() {{
-  function hello() {
-    console.log("hello world");
+rs cmd default() {
+  println!("Hello, world!");
+  fn a() {
+    println!("Hello, world! {}", "{} {} {aaaaa}");
   }
-  hello();
-}}
-
-
-sub p {
-  cmd default() {
-    echo holis;
-  }
+  a();
 }
