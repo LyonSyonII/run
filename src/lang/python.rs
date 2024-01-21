@@ -7,17 +7,27 @@ use crate::strlist::Str;
 const BINARY: &str = "python";
 
 pub(crate) fn installed() -> bool {
-    which::which(BINARY).is_ok()
+    which::which(BINARY).is_ok() || crate::nix::is_nix()
 }
 
-pub(crate) fn program() -> Result<std::path::PathBuf, Str<'static>> {
-    which::which(BINARY).map_err(|error| super::exe_not_found(BINARY, error))
+pub(crate) fn program() -> Result<std::process::Command, Str<'static>> {
+    which::which(BINARY)
+        .map(std::process::Command::new)
+        .map_err(|error| super::exe_not_found(BINARY, error))
+        .or_else(|error| {
+            crate::nix::nix_shell(["python3Minimal"])
+                .map(|mut nix| {
+                    nix.arg("python");
+                    nix
+                })
+                .ok_or(error)
+        })
 }
 
 pub(crate) fn execute(input: &str) -> Result<(), Str<'_>> {
     let to_error = |e: std::io::Error| Str::from(e.to_string());
 
-    let mut child = std::process::Command::new(program()?)
+    let mut child = program()?
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .stdin(std::process::Stdio::piped())

@@ -8,6 +8,7 @@ mod clap;
 mod command;
 mod error;
 mod lang;
+mod nix;
 mod parser;
 mod runfile;
 mod strlist;

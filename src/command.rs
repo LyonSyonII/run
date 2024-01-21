@@ -42,7 +42,7 @@ impl<'i> Command<'i> {
     pub fn lang(&self) -> Language {
         self.lang
     }
-    
+
     pub fn args(&self) -> &[&'i str] {
         &self.args
     }
