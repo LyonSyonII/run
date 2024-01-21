@@ -2,3 +2,5 @@
 **/node_modules
 .direnv
 .envrc
+!tests/stress/run
+tests/stress
