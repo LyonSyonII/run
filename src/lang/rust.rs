@@ -10,14 +10,19 @@ pub(crate) fn installed() -> bool {
     which::which(BINARY).and(which::which("rustc")).is_ok()
 }
 
-pub(crate) fn program() -> Result<std::path::PathBuf, Str<'static>> {
-    which::which(BINARY).map_err(|error| super::exe_not_found(BINARY, error))
-}
+pub(crate) fn program() -> Result<std::process::Command, Str<'static>> {
+    which::which(BINARY)
+        .map(std::process::Command::new)
+        .map_err(|error| super::exe_not_found(BINARY, error))
+        .or_else(|error| {
+            crate::nix::nix_shell(["cargo", "gcc"], "cargo")
+                .ok_or(error)
+        })}
 
 pub(crate) fn execute(input: &str) -> Result<(), Str<'_>> {
     create_project(input)?;
 
-    let out = std::process::Command::new("cargo")
+    let out = program()?
         .arg("run")
         .args(["--color", "always"])
         .output()
@@ -48,11 +53,9 @@ fn create_project(input: &str) -> Result<(), Str<'static>> {
     let Ok(_) = std::env::set_current_dir(&path) else {
         return Err(format!("Could not set current directory to {path:?}").into());
     };
-
-    let cargo = program()?;
-
+    
     if std::fs::metadata(path.join("Cargo.toml")).is_err() {
-        std::process::Command::new(cargo)
+        program()?
             .arg("init")
             .args(["--name", "runfile"])
             // .stderr(std::process::Stdio::piped())

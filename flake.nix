@@ -32,7 +32,6 @@
           ])
           nodePackages.pnpm
           nodejs
-          python3Minimal
           sccache
         ];
 /*         shellHook = ''

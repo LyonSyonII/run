@@ -22,21 +22,22 @@ pub fn is_flakes(nix: &Path) -> bool {
         .is_some()
 }
 
-pub fn nix_shell(packages: impl AsRef<[&'static str]>) -> Option<std::process::Command> {
+pub fn nix_shell(packages: impl AsRef<[&'static str]>, executable: &'static str) -> Option<std::process::Command> {
     let packages = packages.as_ref();
     let nix = get_nix()?;
     
     if is_flakes(&nix) {
-        println!("{}", "Using flakes:".dimmed());
+        eprintln!("{}", "Using flakes (could take a while if it's the first time):".dimmed());
         let mut cmd = std::process::Command::new(nix);
         cmd.arg("shell")
             .args(packages.iter().map(|p| format!("nixpkgs#{p}")))
-            .arg("--command");
+            .arg("--command")
+            .arg(executable);
         Some(cmd)
     } else {
-        println!("{}", "Using nix-shell:".dimmed());
+        eprintln!("{}", "Using nix-shell (could take a while if it's the first time):".dimmed());
         let mut cmd = std::process::Command::new(get_nix_shell()?);
-        cmd.arg("--packages").arg(packages.join(" ")).arg("--run");
+        cmd.arg("--packages").arg(packages.join(" ")).arg("--run").arg(executable);
         Some(cmd)
     }
 }

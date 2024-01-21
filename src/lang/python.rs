@@ -15,11 +15,7 @@ pub(crate) fn program() -> Result<std::process::Command, Str<'static>> {
         .map(std::process::Command::new)
         .map_err(|error| super::exe_not_found(BINARY, error))
         .or_else(|error| {
-            crate::nix::nix_shell(["python3Minimal"])
-                .map(|mut nix| {
-                    nix.arg("python");
-                    nix
-                })
+            crate::nix::nix_shell(["python3Minimal"], "python")
                 .ok_or(error)
         })
 }
