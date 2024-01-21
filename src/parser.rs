@@ -112,18 +112,18 @@ mod test {
 
     #[test]
     fn doc() {
-        assert_eq!(p::doc("#"), Ok("".into()));
-        assert_eq!(p::doc("# Comment"), Ok("Comment".into()));
+        assert_eq!(p::doc("///"), Ok("".into()));
+        assert_eq!(p::doc("/// Comment"), Ok("Comment".into()));
         assert_eq!(
-            p::doc("# Pretty long comment :)"),
+            p::doc("/// Pretty long comment :)"),
             Ok("Pretty long comment :)".into())
         );
         assert_eq!(
-            p::doc("# First line\n# Second line"),
+            p::doc("/// First line\n/// Second line"),
             Ok("First line\nSecond line".into())
         );
         assert_eq!(
-            p::doc("# Example hello world in bash\n# Usage: sh <NAME>"),
+            p::doc("/// Example hello world in bash\n/// Usage: sh <NAME>"),
             Ok("Example hello world in bash\nUsage: sh <NAME>".into())
         );
     }

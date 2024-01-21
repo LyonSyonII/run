@@ -42,6 +42,10 @@ impl<'i> Command<'i> {
     pub fn lang(&self) -> Language {
         self.lang
     }
+    
+    pub fn args(&self) -> &[&'i str] {
+        &self.args
+    }
 
     // Clippy does not detect the usage in the 'format!' macro
     #[allow(unused_variables)]
@@ -60,6 +64,10 @@ impl<'i> Command<'i> {
             return fmt!("{usage} {parents} {args}{:\n<newlines$}", "");
         }
         fmt!("{:\n<newlines$}{usage} {parents} {name} {args}", "")
+    }
+
+    pub fn doc_raw(&self) -> &str {
+        &self.doc
     }
 
     pub fn doc(&'i self, parents: StrListSlice) -> StrList<'i> {
