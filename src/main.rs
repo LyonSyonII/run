@@ -11,6 +11,7 @@ mod parser;
 mod runfile;
 mod strlist;
 mod utils;
+mod clap;
 
 fn main() -> std::io::Result<()> {
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -19,6 +20,11 @@ fn main() -> std::io::Result<()> {
         print_help();
         return Ok(());
     };
+
+    if args.first().is_some_and_oneof(["--print-complete"]) {
+        crate::clap::print_completion();
+        return Ok(());
+    }
 
     let (file, input) = get_file(&mut args);
     let runfile = match parser::runfile(&input) {
@@ -35,7 +41,9 @@ fn main() -> std::io::Result<()> {
             std::process::exit(1);
         }
     };
-
+    
+    // crate::clap::write_completions(&runfile);
+    
     // dbg!(&runfile);
 
     runfile.run((" ", [get_current_exe()?]), &args).unwrap();
@@ -63,6 +71,10 @@ fn print_help() {
         "  {}, {}\tPrints available commands in the runfile",
         "-c".bright_cyan().bold(),
         "--commands".bright_cyan().bold()
+    );
+    println!(
+        "      {}\tPrints the completion script for the current shell.",
+        "--print-complete".bright_cyan().bold()
     );
     println!(
         "  {}, {}\t\tPrints help information",
