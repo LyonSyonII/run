@@ -1,27 +1,11 @@
 cmd default() {
-  # $gen_subcommands()
-  # cat ~/.cache/run/... | python
   echo "$doc"
 }
 
-py cmd gen_subcommands() {{{
-  with open("stress-subcommands", "w") as file:
-    file.write("cmd default() { echo 'Testing parsing a lot of subcommands' }\n")
-    
-    def gen_subcommands(depth, max_depth):
-      if depth == max_depth:
-        file.write("}")
-        return
-      
-      sub: str = f""
-      
-      file.write(f"/// This is a subcommand{" inside a subcommand" * i}\ncmd {"sub" * i+1} {{ echo Hello from a {"sub" * i+1}command! }}\n")
-      gen_subcommands(depth + 1, max_depth)
-}}}
-
+/// Generates a very long file to test parsing speed
 py cmd gen_long() {{{
-  with open("stress-long", "w") as file:
-    file.write("cmd default() { echo 'Testing parsing a very long file' }")
-    for i in range(10_000_000):
-      file.write(f"cmd _{i} {{ echo {i} }}\n")
+  with open("stress-long.run", "w") as file:
+    file.write("cmd default() { echo 'Testing parsing a very long file' }\n")
+    for i in range(1000000):
+      file.write(f"cmd {i}() {{ echo {i} }}\n")
 }}}
