@@ -1,5 +1,4 @@
 use std::path::Path;
-
 use colored::Colorize;
 
 pub fn is_nix() -> bool {

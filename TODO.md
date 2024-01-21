@@ -6,7 +6,7 @@
 - [] --run <LANG\> option, runs stdin as that language
 - [] Run commands from languages 
   - [] Shell/Bash (use --run option to call self and pipe )
-- [] NixOS support via flakes/nix-shell
+- [x] NixOS support via flakes/nix-shell
 - [x] Add language of command and if it's installed
     - [x] If not installed, print a warning and link to Install page
 
