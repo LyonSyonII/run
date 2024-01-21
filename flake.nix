@@ -21,7 +21,7 @@
           # python311
         ];
         shellHook = ''
-          rustup toolchain install nightly-2023-10-31 -c miri rustc-codegen-cranelift-preview rust-src rust-analyzer rustfmt clippy
+          rustup toolchain install nightly-2024-01-20 -c miri rustc-codegen-cranelift-preview rust-src rust-analyzer rustfmt clippy
         '';
       };
     };
