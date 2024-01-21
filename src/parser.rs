@@ -5,7 +5,7 @@ use crate::runfile::Runfile;
 use crate::utils::Goodbye;
 pub use runfile::runfile;
 
-use indexmap::IndexMap as HashMap;
+use crate::HashMap;
 use std::format as fmt;
 
 enum Element<'i> {
@@ -68,9 +68,9 @@ peg::parser! {
         }
         pub rule runfile() -> Result<Runfile<'input>, Vec<Error>> = __ elements:(include()/subcommand()/command())* __ {
             let mut errors = Vec::new();
-            let mut commands = HashMap::new();
-            let mut subcommands = HashMap::new();
-            let mut includes = HashMap::new();
+            let mut commands = HashMap::with_hasher(xxhash_rust::xxh3::Xxh3Builder::new());
+            let mut subcommands = HashMap::with_hasher(xxhash_rust::xxh3::Xxh3Builder::new());
+            let mut includes = HashMap::with_hasher(xxhash_rust::xxh3::Xxh3Builder::new());
             for element in elements {
                 match element {
                     Element::Command(name, command) => {

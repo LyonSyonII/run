@@ -3,7 +3,7 @@ use std::io::Write as _;
 
 use colored::{Color, Colorize};
 
-use indexmap::IndexMap as HashMap;
+use crate::HashMap;
 use crate::command::Command;
 use crate::strlist::{Str, StrList, StrListSlice};
 use crate::utils::OptionExt;
