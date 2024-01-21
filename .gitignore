@@ -1,3 +1,5 @@
 /target
 **/node_modules
 .direnv
+!tests/stress/run
+tests/stress
