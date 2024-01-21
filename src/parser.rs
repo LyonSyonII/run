@@ -4,7 +4,8 @@ use crate::lang::Language;
 use crate::runfile::Runfile;
 use crate::utils::Goodbye;
 pub use runfile::runfile;
-use std::collections::HashMap;
+
+use indexmap::IndexMap as HashMap;
 use std::format as fmt;
 
 enum Element<'i> {

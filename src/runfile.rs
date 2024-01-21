@@ -1,9 +1,9 @@
-use std::collections::HashMap;
 use std::format as f;
 use std::io::Write as _;
 
 use colored::{Color, Colorize};
 
+use indexmap::IndexMap as HashMap;
 use crate::command::Command;
 use crate::strlist::{Str, StrList, StrListSlice};
 use crate::utils::OptionExt;
@@ -79,15 +79,15 @@ impl<'i> Runfile<'i> {
 
         writeln!(to, "{}", "Commands:".bright_green().bold()).map_err(op)?;
         let mut commands = self.commands.values().collect::<Vec<_>>();
-        commands.sort_by(|a, b| {
-            if a.name() == "default" {
-                std::cmp::Ordering::Less
-            } else if b.name() == "default" {
-                std::cmp::Ordering::Greater
-            } else {
-                a.name().cmp(b.name())
-            }
-        });
+        // commands.sort_by(|a, b| {
+        //     if a.name() == "default" {
+        //         std::cmp::Ordering::Less
+        //     } else if b.name() == "default" {
+        //         std::cmp::Ordering::Greater
+        //     } else {
+        //         a.name().cmp(b.name())
+        //     }
+        // });
         let mut warnings = Vec::new();
         let (lang_indent, name_indent) = indent;
         for cmd in commands {
@@ -146,7 +146,7 @@ impl<'i> Runfile<'i> {
 
         writeln!(to, "{}", "Subcommands:".bright_green().bold()).map_err(op)?;
         let mut subcommands = self.subcommands.iter().collect::<Vec<_>>();
-        subcommands.sort_unstable_by(|(n1, _), (n2, _)| n1.cmp(n2));
+        // subcommands.sort_unstable_by(|(n1, _), (n2, _)| n1.cmp(n2));
         // let (lang_indent, name_indent) = indent;
         let indent = indent.0 + indent.1;
         for (name, sub) in subcommands {

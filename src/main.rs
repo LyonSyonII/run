@@ -4,6 +4,8 @@ pub use std::format as fmt;
 use strlist::Str;
 use utils::OptionExt as _;
 
+pub type HashMap<K, V> = indexmap::IndexMap<K, V, xxhash_rust::xxh3::Xxh3Builder>;
+
 mod clap;
 mod command;
 mod error;
@@ -55,6 +57,8 @@ fn main() -> std::io::Result<()> {
 fn print_help() {
     println!("Runs a runfile in the current directory");
     println!("Possible runfile names: [run, runfile] or any ending in '.run'\n");
+    // TODO: Add possible languages and basic examples
+    // TODO: Explain what will do if nix is present
     println!(
         "{} {} {}\n",
         "Usage:".bright_green().bold(),
