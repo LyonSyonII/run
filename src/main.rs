@@ -4,6 +4,7 @@ pub use std::format as fmt;
 use strlist::Str;
 use utils::OptionExt as _;
 
+mod clap;
 mod command;
 mod error;
 mod lang;
@@ -11,7 +12,6 @@ mod parser;
 mod runfile;
 mod strlist;
 mod utils;
-mod clap;
 
 fn main() -> std::io::Result<()> {
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
@@ -41,9 +41,9 @@ fn main() -> std::io::Result<()> {
             std::process::exit(1);
         }
     };
-    
+
     // crate::clap::write_completions(&runfile);
-    
+
     // dbg!(&runfile);
 
     runfile.run((" ", [get_current_exe()?]), &args).unwrap();

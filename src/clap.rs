@@ -7,12 +7,23 @@ use clap_complete::shells::Shell;
 pub fn print_completion() {
     // let app = build_cli(runfile);
     // gen_completion(get_shell(), app, &mut std::io::stdout());
-    let mut cmd = clap::Command::new("run")
-    .args([
-        arg!(-h --help "Prints help information"),
-        arg!(-c --commands "Prints available commands in the runfile"),
-        arg!(--print-complete "Prints the completion script for the current shell"),
-        arg!(-f --file <FILE> "Runs the specified file instead of searching for a runfile"),
+    let mut cmd = clap::Command::new("run").args([
+        clap::Arg::new("help")
+            .short('h')
+            .long("help")
+            .help("Prints help information"),
+        clap::Arg::new("commands")
+            .short('c')
+            .long("commands")
+            .help("Prints available commands in the runfile"),
+        clap::Arg::new("print-complete")
+            .long("print-complete")
+            .help("Prints the completion script for the current shell"),
+        clap::Arg::new("file")
+            .short('f')
+            .long("file")
+            .value_name("FILE")
+            .help("Runs the specified file instead of searching for a runfile"),
     ]);
     clap_complete::generate(get_shell(), &mut cmd, "run", &mut std::io::stdout());
 }
@@ -24,7 +35,8 @@ fn get_shell() -> Shell {
         .output()
         .unwrap()
         .stdout;
-    std::str::from_utf8(&shell).unwrap()
+    std::str::from_utf8(&shell)
+        .unwrap()
         .lines()
         .next()
         .unwrap()
@@ -35,17 +47,15 @@ fn get_shell() -> Shell {
 // UNUSED at the moment, will be used if 'run' is migrated to 'clap'
 
 fn build_cli(runfile: &Runfile<'_>) -> clap::Command {
-    let commands = runfile
-        .commands
-        .iter()
-        .map(|(name, c)| 
-            clap::Command::new(name.to_string())
-                .about(c.doc_raw().to_owned())
-                .args(c.args().iter().map(|a| 
-                    clap::Arg::new(a.to_string())
-                        .required(true)
-                ))
-        );
+    let commands = runfile.commands.iter().map(|(name, c)| {
+        clap::Command::new(name.to_string())
+            .about(c.doc_raw().to_owned())
+            .args(
+                c.args()
+                    .iter()
+                    .map(|a| clap::Arg::new(a.to_string()).required(true)),
+            )
+    });
 
     clap::Command::new("run")
         .args([
@@ -64,11 +74,11 @@ pub fn write_completions(runfile: &Runfile<'_>) {
     let app = build_cli(runfile);
 
     let shell = get_shell();
-    
+
     let mut out = Vec::<u8>::new();
     gen_completion(shell, app, &mut out);
     println!("{}", std::str::from_utf8(&out).unwrap());
-    
+
     let mut child = std::process::Command::new("complete")
         .arg("/dev/stdin")
         .stdin(std::process::Stdio::piped())

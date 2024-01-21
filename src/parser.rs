@@ -1,8 +1,8 @@
 use crate::command::Command;
+use crate::error::Error;
 use crate::lang::Language;
 use crate::runfile::Runfile;
 use crate::utils::Goodbye;
-use crate::error::Error;
 pub use runfile::runfile;
 use std::collections::HashMap;
 use std::format as fmt;
@@ -12,7 +12,7 @@ enum Element<'i> {
     Subcommand(&'i str, Runfile<'i>),
     Include(&'i str, Runfile<'i>),
     Error(Error),
-    Errors(Vec<Error>)
+    Errors(Vec<Error>),
 }
 
 peg::parser! {
@@ -21,7 +21,7 @@ peg::parser! {
         rule __ = quiet!{ ([' ' | '\t' | '\n' | '\r'] / comment())* }
         pub rule doc() -> String = c:(("///" c:$([^'\n']*){ c.trim() }) ** "\n") { c.join("\n") }
         pub rule comment() = (!"///" "//" [^'\n']*) ++ "\n" / "/*" (!"*/" [_])* "*/"
-        
+
         pub rule language() -> Result<Language, Error> = start:position!() i:ident() end:position!() __ ("fn"/"cmd") {
             i.parse().map_err(|e| Error::new(e, start, end))
         } / ("fn"/"cmd") {
@@ -42,7 +42,7 @@ peg::parser! {
                    Language::Shell
                }
            };
-           
+
            if errors.is_empty() {
                let command = Command::new(name, doc, lang, args, script);
                Element::Command(name, command)
