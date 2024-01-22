@@ -15,11 +15,12 @@ path = "src/main.rs"
 app_dirs2 = "2.5.5"
 ariadne = "0.4.0"
 beef = { version = "0.5.2", features = ["const_fn"] }
-clap = { version = "4.4.18", default-features = false, features = ["std", "string"] }
+clap = { version = "4.4.18", default-features = false, features = ["string"] }
 clap_complete = { version = "4.4.8" }
 colored = "2.1.0"
-indexmap = "2.1.0"
+indexmap = { version = "2.1.0" }
 md5 = "0.7.0"
+owo-colors = "4.0.0"
 peg = "0.8.2"
 read_pipe = "0.1.2"
 which = "6.0.0"

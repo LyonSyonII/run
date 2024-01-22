@@ -78,7 +78,7 @@ impl<'i> Runfile<'i> {
         }
 
         writeln!(to, "{}", "Commands:".bright_green().bold()).map_err(op)?;
-        let mut commands = self.commands.values().collect::<Vec<_>>();
+        let commands = self.commands.values().collect::<Vec<_>>();
         // commands.sort_by(|a, b| {
         //     if a.name() == "default" {
         //         std::cmp::Ordering::Less
@@ -145,7 +145,7 @@ impl<'i> Runfile<'i> {
         let op = |e: std::io::Error| Str::from(e.to_string());
 
         writeln!(to, "{}", "Subcommands:".bright_green().bold()).map_err(op)?;
-        let mut subcommands = self.subcommands.iter().collect::<Vec<_>>();
+        let subcommands = self.subcommands.iter().collect::<Vec<_>>();
         // subcommands.sort_unstable_by(|(n1, _), (n2, _)| n1.cmp(n2));
         // let (lang_indent, name_indent) = indent;
         let indent = indent.0 + indent.1;

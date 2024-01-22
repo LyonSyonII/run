@@ -1,4 +1,4 @@
-use ariadne::{sources, Color, ColorGenerator, Fmt, Label, Report, ReportKind, Source};
+use ariadne::{Color, ColorGenerator, Fmt, Label, ReportKind, Source};
 use colored::Colorize as _;
 pub use std::format as fmt;
 use strlist::Str;
