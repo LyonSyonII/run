@@ -1,17 +1,19 @@
 // TODO: Fix variable escaping highlight on unquoted strings
-const variable = 
-"hola que tal
-hola 
-hola"
+// You can declare constants and use them in any command
+const constant = 200
+// If you want to preserve whitespaces, you have to put it between quotes
+// Either double or single quotes can be used
+const whitespace = "    \n    "
 
 /// The default command gets executed when the program is called without arguments
 cmd default() {
   # 'doc' is a special variable that contains the whole documentation of the program
   echo -n "$doc";
-  echo '$variable';
+  echo 'The constant is: $constant';
+  echo 'The whitespace is: "$whitespace"';
 }
 
-// You can define an argument for a command by writing its name between parentheses
+// Define an argument for a command by writing its name between the parentheses
 // Use it in the command with the syntax: '$argument'
 /// Shell command
 sh cmd sh(name) {
@@ -19,6 +21,8 @@ sh cmd sh(name) {
   echo Hello $name from the Shell!
 }
 
+// The language of a command can be specified by writing its name before 'cmd'
+// If no language is specified, the command will be executed in the default shell
 /// Bash command
 bash cmd bash(name) {
   echo "Hello $name from Bash!";
