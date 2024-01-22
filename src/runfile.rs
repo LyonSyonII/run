@@ -13,7 +13,7 @@ pub struct Runfile<'i> {
     pub(crate) commands: HashMap<&'i str, Command<'i>>,
     pub(crate) subcommands: HashMap<&'i str, Runfile<'i>>,
     pub(crate) includes: HashMap<&'i str, Runfile<'i>>,
-    pub(crate) vars: Vec<(&'i str, &'i str)>,
+    pub(crate) vars: Vec<(&'i str, Str<'i>)>,
     pub(crate) doc: String,
 }
 

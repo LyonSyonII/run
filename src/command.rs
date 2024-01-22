@@ -112,7 +112,7 @@ impl<'i> Command<'i> {
         &self,
         parents: StrListSlice,
         args: impl AsRef<[String]>,
-        vars: impl AsRef<[(&'i str, &'i str)]>,
+        vars: impl AsRef<[(&'i str, Str<'i>)]>,
         runfile_docs: String,
     ) -> std::io::Result<()> {
         let args = args.as_ref();
@@ -165,7 +165,7 @@ impl<'i> Command<'i> {
 fn replace_all(
     script: String,
     args: (&[&str], &[String]),
-    vars: &[(&str, &str)],
+    vars: &[(&str, Str<'_>)],
     runfile_docs: String,
     doc: String,
     usage: String,

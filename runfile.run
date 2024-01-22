@@ -13,11 +13,14 @@ const constant_with_spaces = Constantinople is a nice city, I'd like to visit it
 // If you want to preserve prefix whitespaces, you have to put the value between quotes
 // Either double or single quotes can be used
 const whitespace = "  \t  "
+// Use '$(...)' to evaluate a math expression
+const math = $(1 + 2 * 3 / 4)
 /// Command that uses constants
 cmd constants() {
   echo constant = $constant;
   echo "constant_with_spaces = $constant_with_spaces";
   echo 'whitespace = "$whitespace"';
+  echo '1 + 2 * 3 / 4 = $math';
 }
 
 // Define an argument for a command by writing its name between the parentheses

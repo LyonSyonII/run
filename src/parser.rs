@@ -2,6 +2,7 @@ use crate::command::Command;
 use crate::error::Error;
 use crate::lang::Language;
 use crate::runfile::Runfile;
+use crate::strlist::Str;
 use crate::utils::Goodbye;
 pub use runfile::runfile;
 
@@ -12,7 +13,7 @@ enum Element<'i> {
     Command(&'i str, Command<'i>),
     Subcommand(&'i str, Runfile<'i>),
     Include(&'i str, Runfile<'i>),
-    Constant(&'i str, &'i str),
+    Constant(&'i str, Str<'i>),
     Error(Error),
     Errors(Vec<Error>),
 }
@@ -70,7 +71,8 @@ peg::parser! {
         rule dqc() = "\\\"" / [^'"']
         rule sqc() = "\\\'" / [^'\'']
         pub rule value() -> &'input str = ['"'] v:$(dqc()*) ['"'] { v } / "'" v:$(sqc()*) "'" { v } / v:$([^'\n']*)
-        pub rule var() -> Element<'input> = __ "const" _ name:ident() __ "=" __ v:value() __ {
+        pub rule math() -> String = "$(" e:$((!(")"[' ']*"\n") [_])*) ")" { super::arithmetic::calculate(e.trim()).unwrap().to_string() }
+        pub rule var() -> Element<'input> = __ "const" _ name:ident() __ "=" __ v:(m:math() { m.into() }/v:value() { v.into() }) __ {
             Element::Constant(name, v)
         }
         pub rule runfile() -> Result<Runfile<'input>, Vec<Error>> = __ elements:(var()/include()/subcommand()/command())* __ {
@@ -118,6 +120,27 @@ peg::parser! {
         }
     }
 }
+
+peg::parser!( grammar arithmetic() for str {
+    rule _ = [' ' | '\t' | '\n' | '\r']*
+    pub(crate) rule calculate() -> f64 = precedence!{
+        x:(@) _ "+" _ y:@ { x + y }
+        x:(@) _ "-" _ y:@ { x - y }
+              "-" _ v:@ { - v }
+        --
+        x:(@) _ "*" _ y:@ { x * y }
+        x:(@) _ "/" _  y:@ { x / y }
+        --
+        x:@ _ "^" _ y:(@) { x.powf(y) }
+        v:@ _ "!"       { (1..v as i64+1).product::<i64>() as f64 }
+        --
+        "(" _ v:calculate() _ ")" { v }
+        n:number() { n }
+    }
+
+    rule number() -> f64
+        = n:$(['0'..='9']+"."?['0'..='9']* / ['0'..='9']*"."?['0'..='9']+) { n.parse().unwrap() }
+});
 
 #[cfg(test)]
 mod test {
