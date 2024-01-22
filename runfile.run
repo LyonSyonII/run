@@ -1,16 +1,23 @@
 // TODO: Fix variable escaping highlight on unquoted strings
-// You can declare constants and use them in any command
-const constant = 200
-// If you want to preserve whitespaces, you have to put it between quotes
-// Either double or single quotes can be used
-const whitespace = "    \n    "
 
 /// The default command gets executed when the program is called without arguments
 cmd default() {
   # 'doc' is a special variable that contains the whole documentation of the program
   echo -n "$doc";
-  echo 'The constant is: $constant';
-  echo 'The whitespace is: "$whitespace"';
+}
+
+// You can declare constants and use them in any command
+const constant = Constantinople
+// Constants can contain any character (even spaces)
+const constant_with_spaces = Constantinople is a nice city. I'd like to visit it one day
+// If you want to preserve prefix whitespaces, you have to put the value between quotes
+// Either double or single quotes can be used
+const whitespace = " \t "
+/// Command that uses constants
+cmd constants() {
+  echo constant = $constant;
+  echo "constant_with_spaces = $constant_with_spaces";
+  echo 'whitespace = "$whitespace"';
 }
 
 // Define an argument for a command by writing its name between the parentheses

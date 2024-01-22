@@ -106,7 +106,7 @@
                 },
                 {
                     "name": "string.unquoted",
-                    "begin": "(?<=const [\\s\\S]*=)[ ]*[^\"' \\n].*",
+                    "begin": "(?<=const [\\s\\S]*=)[ ]*[^\"' \\n]",
                     "end": "\\n",
                     "patterns": [
                         {

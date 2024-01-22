@@ -172,7 +172,7 @@ fn replace_all(
 ) -> String {
     // Replace arguments
     type Bytes<'a> = beef::lean::Cow<'a, [u8]>;
-
+    
     let vars_names = vars.iter().map(|(n, _)| Bytes::owned(fmt!("${n}").into()));
     let vars_values = vars.iter().map(|(_, v)| {
         let patterns = ["\\n", "\\r", "\\t", "\\0", "\\\"", "\\'", "\\\\", "\\$"];
@@ -180,7 +180,7 @@ fn replace_all(
         let ac = aho_corasick::AhoCorasick::new(patterns).unwrap();
         ac.replace_all(v, &replace_with).into()
     });
-
+    
     let args_names = args
         .0
         .iter()
@@ -198,8 +198,11 @@ fn replace_all(
         Str::owned(doc),
         Str::owned(usage),
     ]);
-
-    let ac = aho_corasick::AhoCorasick::new(patterns).unwrap();
+    
+    let ac = aho_corasick::AhoCorasick::builder()
+        .match_kind(aho_corasick::MatchKind::LeftmostLongest)
+        .build(patterns)
+        .unwrap();
     ac.replace_all(&script, &replace_with.collect::<Vec<_>>())
 }
 
