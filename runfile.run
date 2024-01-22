@@ -9,10 +9,10 @@ cmd default() {
 // You can declare constants and use them in any command
 const constant = Constantinople
 // Constants can contain any character (even spaces)
-const constant_with_spaces = Constantinople is a nice city. I'd like to visit it one day
+const constant_with_spaces = Constantinople is a nice city, I'd like to visit it one day
 // If you want to preserve prefix whitespaces, you have to put the value between quotes
 // Either double or single quotes can be used
-const whitespace = " \t "
+const whitespace = "  \t  "
 /// Command that uses constants
 cmd constants() {
   echo constant = $constant;
