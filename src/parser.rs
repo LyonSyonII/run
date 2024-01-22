@@ -12,6 +12,7 @@ enum Element<'i> {
     Command(&'i str, Command<'i>),
     Subcommand(&'i str, Runfile<'i>),
     Include(&'i str, Runfile<'i>),
+    Constant(&'i str, &'i str),
     Error(Error),
     Errors(Vec<Error>),
 }
@@ -67,10 +68,11 @@ peg::parser! {
             }
         }
         pub rule runfile() -> Result<Runfile<'input>, Vec<Error>> = __ elements:(include()/subcommand()/command())* __ {
-            let mut errors = Vec::new();
             let mut commands = HashMap::with_hasher(xxhash_rust::xxh3::Xxh3Builder::new());
             let mut subcommands = HashMap::with_hasher(xxhash_rust::xxh3::Xxh3Builder::new());
             let mut includes = HashMap::with_hasher(xxhash_rust::xxh3::Xxh3Builder::new());
+            let mut vars = Vec::new();
+            let mut errors = Vec::new();
             for element in elements {
                 match element {
                     Element::Command(name, command) => {
@@ -83,6 +85,9 @@ peg::parser! {
                         includes.insert(name, inc.clone());
                         commands.extend(inc.commands);
                         subcommands.extend(inc.subcommands);
+                    }
+                    Element::Constant(name, value) => {
+                        vars.push((name, value));
                     }
                     Element::Error(e) => {
                         errors.push(e);
@@ -101,6 +106,7 @@ peg::parser! {
                     commands,
                     subcommands,
                     includes,
+                    vars
                 }
             )
         }

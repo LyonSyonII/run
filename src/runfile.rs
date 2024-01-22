@@ -3,16 +3,17 @@ use std::io::Write as _;
 
 use colored::{Color, Colorize};
 
-use crate::HashMap;
 use crate::command::Command;
 use crate::strlist::{Str, StrList, StrListSlice};
 use crate::utils::OptionExt;
+use crate::HashMap;
 
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct Runfile<'i> {
     pub(crate) commands: HashMap<&'i str, Command<'i>>,
     pub(crate) subcommands: HashMap<&'i str, Runfile<'i>>,
     pub(crate) includes: HashMap<&'i str, Runfile<'i>>,
+    pub(crate) vars: Vec<(&'i str, &'i str)>,
     pub(crate) doc: String,
 }
 
@@ -230,7 +231,7 @@ impl<'i> Runfile<'i> {
                 return Ok(());
             };
             return cmd
-                .run(parents.as_slice(), args, runfile_docs()?)
+                .run(parents.as_slice(), args, &self.vars, runfile_docs()?)
                 .map_err(|e| f!("Command execution failed: {}", e).into());
         };
 
@@ -238,6 +239,7 @@ impl<'i> Runfile<'i> {
             cmd.run(
                 parents.as_slice(),
                 args.get(1..).unwrap_or_default(),
+                &self.vars,
                 runfile_docs()?,
             )
             .map_err(|e| f!("Command execution failed: {}", e).into())
