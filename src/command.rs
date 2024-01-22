@@ -162,39 +162,42 @@ impl<'i> Command<'i> {
     }
 }
 
-fn replace_all<'i>(
+fn replace_all(
     script: String,
     args: (&[&str], &[String]),
     vars: &[(&str, &str)],
-    runfile_docs: impl Into<Str<'i>>,
-    doc: impl Into<Str<'i>>,
-    usage: impl Into<Str<'i>>,
+    runfile_docs: String,
+    doc: String,
+    usage: String,
 ) -> String {
     // Replace arguments
     type Bytes<'a> = beef::lean::Cow<'a, [u8]>;
 
-    let vars_names = vars
-        .iter()
-        .map(|(n, _)| Bytes::owned(fmt!("${n}").into_bytes()));
-    let vars_values = vars.iter().map(|(_, v)| Str::borrowed(v));
+    let vars_names = vars.iter().map(|(n, _)| Bytes::owned(fmt!("${n}").into()));
+    let vars_values = vars.iter().map(|(_, v)| {
+        let patterns = ["\\n", "\\r", "\\t", "\\0", "\\\"", "\\'", "\\\\", "\\$"];
+        let replace_with = ["\n", "\r", "\t", "\0", "\"", "'", "\\", "$"];
+        let ac = aho_corasick::AhoCorasick::new(patterns).unwrap();
+        ac.replace_all(v, &replace_with).into()
+    });
 
-    let patterns = args
+    let args_names = args
         .0
         .iter()
-        .map(|n| Bytes::owned(fmt!("${n}").into_bytes()))
-        .chain(vars_names)
-        .chain([
-            Bytes::borrowed(b"$doc"),
-            Bytes::borrowed(b"$cmddoc"),
-            Bytes::borrowed(b"$usage"),
-        ]);
+        .map(|n| Bytes::owned(fmt!("${n}").into_bytes()));
+    let args_values = args.1.iter().map(|v| Str::borrowed(v));
 
-    let replace_with = args
-        .1
-        .iter()
-        .map(|v| Str::borrowed(v))
-        .chain(vars_values)
-        .chain([runfile_docs.into(), doc.into(), usage.into()]);
+    let patterns = args_names.chain(vars_names).chain([
+        Bytes::borrowed(b"$doc"),
+        Bytes::borrowed(b"$cmddoc"),
+        Bytes::borrowed(b"$usage"),
+    ]);
+
+    let replace_with = args_values.chain(vars_values).chain([
+        Str::owned(runfile_docs),
+        Str::owned(doc),
+        Str::owned(usage),
+    ]);
 
     let ac = aho_corasick::AhoCorasick::new(patterns).unwrap();
     ac.replace_all(&script, &replace_with.collect::<Vec<_>>())

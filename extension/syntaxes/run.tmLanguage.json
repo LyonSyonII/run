@@ -9,6 +9,9 @@
             "include": "#string"
         },
         {
+            "include": "#variable"
+        },
+        {
             "include": "#include"  
         },
         {
@@ -40,6 +43,18 @@
                 {
                     "name": "keyword.subcommand.run",
                     "match": "\\b(sub)\\b"
+                },
+                {
+                    "name": "keyword.constant.run",
+                    "match": "\\b(const)\\b"
+                },
+                {
+                    "name": "keyword.operator.declare.run",
+                    "match": "="
+                },
+                {
+                    "name": "keyword.operator.math.run",
+                    "match": "[+|\\-|*]|((?<!\/)\/(?!\/))"
                 }
             ]
         },
@@ -57,6 +72,42 @@
                     "name": "string.quoted.double.run",
                     "begin": "\"",
                     "end": "\"",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.run",
+                            "match": "\\\\."
+                        }
+                    ]
+                },
+                {
+                    "name": "string.quoted.single.run",
+                    "begin": "'",
+                    "end": "'",
+                    "patterns": [
+                        {
+                            "name": "constant.character.escape.run",
+                            "match": "\\\\."
+                        }
+                    ]
+                }
+            ]
+        },
+        "variable": {
+            "patterns": [
+                {
+                    "match": "(?<=const)\\s+([a-zA-Z_\\-0-9]+)",
+                    "captures": {
+                        "1": { "name": "constant.other.run meta.interpolation.run" }
+                    }
+                },
+                {
+                    "name": "constant.numeric.run",
+                    "match": "(?<=const .*=\\s*)([0-9]|\\.)+"
+                },
+                {
+                    "name": "string.unquoted",
+                    "begin": "(?<=const [\\s\\S]*=)[ ]*[^\"' \\n].*",
+                    "end": "\\n",
                     "patterns": [
                         {
                             "name": "constant.character.escape.run",
@@ -89,7 +140,7 @@
                     "include": "#keywords"
                 },
                 {
-                    "match": "(?<=fn|cmd)\\s+([a-zA-Z_][a-zA-Z_\\-0-9]*)\\s*\\(\\s*(([a-zA-Z_][a-zA-Z_\\-0-9]*\\s*)*)\\)\\s*",
+                    "match": "(?<=fn|cmd)\\s+([a-zA-Z_\\-0-9]*)\\s*\\(\\s*(([a-zA-Z_\\-0-9]*\\s*)*)\\)\\s*",
                     "captures": {
                         "1": { "name": "entity.name.function.run" },
                         "2": { "name": "variable.parameter.function.run" }
@@ -100,7 +151,7 @@
         "subcommand": {
             "patterns": [
                 {
-                    "match": "(?<=sub)\\s+([a-zA-Z_][a-zA-Z_\\-0-9]*)\\s*",
+                    "match": "(?<=sub)\\s+([a-zA-Z_\\-0-9]*)\\s*",
                     "captures": {
                         "1": { "name": "entity.name.function.run" }
                     },

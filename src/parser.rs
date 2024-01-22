@@ -67,7 +67,13 @@ peg::parser! {
                 Err(e) => Element::Errors(e)
             }
         }
-        pub rule runfile() -> Result<Runfile<'input>, Vec<Error>> = __ elements:(include()/subcommand()/command())* __ {
+        rule dqc() = "\\\"" / [^'"']
+        rule sqc() = "\\\'" / [^'\'']
+        pub rule value() -> &'input str = ['"'] v:$(dqc()*) ['"'] { v } / "'" v:$(sqc()*) "'" { v } / v:$([^'\n']*)
+        pub rule var() -> Element<'input> = __ "const" _ name:ident() __ "=" __ v:value() __ {
+            Element::Constant(name, v)
+        }
+        pub rule runfile() -> Result<Runfile<'input>, Vec<Error>> = __ elements:(var()/include()/subcommand()/command())* __ {
             let mut commands = HashMap::with_hasher(xxhash_rust::xxh3::Xxh3Builder::new());
             let mut subcommands = HashMap::with_hasher(xxhash_rust::xxh3::Xxh3Builder::new());
             let mut includes = HashMap::with_hasher(xxhash_rust::xxh3::Xxh3Builder::new());
