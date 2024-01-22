@@ -111,7 +111,7 @@
                         {
                             "name": "keyword.operator.math.expression.run",
                             "begin": "\\$\\(",
-                            "end": "\\)",
+                            "end": "\\)[ ]*$",
                             "patterns": [
                                 {
                                     "name": "constant.numeric.run",

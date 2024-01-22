@@ -71,9 +71,17 @@ peg::parser! {
         rule dqc() = "\\\"" / [^'"']
         rule sqc() = "\\\'" / [^'\'']
         pub rule value() -> &'input str = ['"'] v:$(dqc()*) ['"'] { v } / "'" v:$(sqc()*) "'" { v } / v:$([^'\n']*)
-        pub rule math() -> String = "$(" e:$((!(")"[' ']*"\n") [_])*) ")" { super::arithmetic::calculate(e.trim()).unwrap().to_string() }
-        pub rule var() -> Element<'input> = __ "const" _ name:ident() __ "=" __ v:(m:math() { m.into() }/v:value() { v.into() }) __ {
-            Element::Constant(name, v)
+        pub rule math() -> Result<Str<'input>, Error> = start:position!() "$(" e:$((!(")"[' ']*"\n") [_])*) ")" end:position!() { 
+            match arithmetic::calculate(e.trim()) {
+                Ok(v) => Ok(v.to_string().into()),
+                Err(e) => Error::err("Could not parse math expression", start, end)
+            }
+        }
+        pub rule var() -> Element<'input> = __ "const" _ name:ident() __ "=" __ v:(m:math() { m }/v:value() { Ok(Str::from(v)) }) __ {
+            match v {
+                Ok(v) => Element::Constant(name, v),
+                Err(e) => Element::Error(e)
+            }
         }
         pub rule runfile() -> Result<Runfile<'input>, Vec<Error>> = __ elements:(var()/include()/subcommand()/command())* __ {
             let mut commands = HashMap::with_hasher(xxhash_rust::xxh3::Xxh3Builder::new());
@@ -137,7 +145,7 @@ peg::parser!( grammar arithmetic() for str {
         "(" _ v:calculate() _ ")" { v }
         n:number() { n }
     }
-
+    
     rule number() -> f64
         = n:$(['0'..='9']+"."?['0'..='9']* / ['0'..='9']*"."?['0'..='9']+) { n.parse().unwrap() }
 });
