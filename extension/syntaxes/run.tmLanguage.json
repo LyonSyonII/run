@@ -150,7 +150,7 @@
                     "include": "#keywords"
                 },
                 {
-                    "match": "(?<=fn|cmd)\\s+([a-zA-Z_\\-0-9]*)\\s*\\(\\s*(([a-zA-Z_\\-0-9]*\\s*)*)\\)\\s*",
+                    "match": "([a-zA-Z_\\-0-9]*)\\s*\\(\\s*(([a-zA-Z_\\-0-9]*\\s*)*)\\)\\s*",
                     "captures": {
                         "1": { "name": "entity.name.function.run" },
                         "2": { "name": "variable.parameter.function.run" }
@@ -200,6 +200,17 @@
                     "patterns": [
                         { "include": "#function" },
                         { "include": "source.rust" }
+                    ]
+                },
+                {
+                    "begin": "c",
+                    "end": "(?<=})",
+                    "beginCaptures": {
+                        "0": { "name": "entity.name.class.run" }
+                    },
+                    "patterns": [
+                        { "include": "#function" },
+                        { "include": "source.c" }
                     ]
                 },
                 {

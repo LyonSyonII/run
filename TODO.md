@@ -19,7 +19,7 @@
 - [] Nushell
 - [] Fish
 - [] Typescript
-- [] C
+- [x] C
 - [] C++
 - [] C#
 - [] Java
@@ -31,6 +31,8 @@
     - [] Cargo dependencies
 - [] Javascript
     - [] Npm dependencies
+- [] C#
+    - [] Nuget dependencies?
 
 
 ## Experimentation

@@ -24,7 +24,7 @@ cmd constants() {
 // Define an argument for a command by writing its name between the parentheses
 // Use it in the command with the syntax: '$argument'
 /// Shell command
-sh cmd sh(name) {
+sh cmd shell(name) {
   # Variable interpolation is done in all languages with $argument
   echo Hello $name from the Shell!
 }
@@ -36,16 +36,17 @@ bash cmd bash(name) {
   echo "Hello $name from Bash!";
 }
 
-// Variables are replaced with their value before the command is executed
-// So if you want to use one as a String, you have to put it between quotes (depending on the language)
+// 'cmd' can be omitted if the language is specified
+// Variables are replaced with their value before the command is executed,
+// so if you want to use one as a String, you have to put it between quotes
 /// Python command
-py cmd py(name) {
+py python(name) {
   print("Hello $name from Python!")
 }
 
 // Any code is valid in the command's body as long as it's valid in the command's language
 /// Javascript command
-js cmd js(name) {
+js cmd javascript(name) {
   function greet() {
     console.log("Hello $name from Javascript!");
   }
@@ -55,7 +56,7 @@ js cmd js(name) {
 // Not only interpreted languages are supported, you can also use compiled languages
 // These get compiled when the specific command is called for the first time
 /// Rust command
-rs cmd rs(name) {
+rs cmd rust(name) {
   println!("Hello $name from Rust!");
 }
 
