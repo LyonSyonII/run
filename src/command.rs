@@ -56,7 +56,9 @@ impl<'i> Command<'i> {
         let args = self
             .args
             .iter()
-            .fold(String::new(), |acc, a| acc + "<" + &a.to_uppercase() + ">" + " ")
+            .fold(String::new(), |acc, a| {
+                acc + "<" + &a.to_uppercase() + ">" + " "
+            })
             .cyan();
         if name.contains("default") {
             return format!("{usage} {parents} {args}{}", "\n".repeat(newlines));

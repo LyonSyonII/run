@@ -80,15 +80,6 @@ impl<'i> Runfile<'i> {
 
         writeln!(to, "{}", "Commands:".bright_green().bold()).map_err(op)?;
         let commands = self.commands.values().collect::<Vec<_>>();
-        // commands.sort_by(|a, b| {
-        //     if a.name() == "default" {
-        //         std::cmp::Ordering::Less
-        //     } else if b.name() == "default" {
-        //         std::cmp::Ordering::Greater
-        //     } else {
-        //         a.name().cmp(b.name())
-        //     }
-        // });
         let mut warnings = Vec::new();
         let (lang_indent, name_indent) = indent;
         for cmd in commands {

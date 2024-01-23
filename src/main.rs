@@ -30,7 +30,23 @@ fn main() -> std::io::Result<()> {
     }
 
     let (file, input) = get_file(&mut args);
-    let runfile = match parser::runfile(&input) {
+    let dot = std::path::Path::new(".");
+    let path = if file == "stdin" {
+        dot
+    } else {
+        std::path::Path::new(file.as_ref())
+            .parent()
+            .map(|mut p| {
+                if p == std::path::Path::new("") {
+                    p = dot
+                }
+                p
+            })
+            .unwrap_or(dot)
+    };
+
+    // println!("{file:?}, {path:?}, {:?}", path.canonicalize());
+    let runfile = match parser::runfile(&input, path) {
         Ok(r) => match r {
             Ok(r) => r,
             Err(errors) => {
@@ -123,7 +139,7 @@ fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
         if let Some(file) = file {
             if let Ok(contents) = std::fs::read_to_string(file) {
                 let file = file.to_owned().into();
-                // Remove -f and the file name
+                // Remove -f and the file name from args
                 args.drain(..=1);
                 return (file, contents);
             }
@@ -179,7 +195,7 @@ fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
             let name = path
                 .file_name()
                 .map(|p| p.to_string_lossy().to_string().into());
-            let contents = std::fs::read_to_string(file.path());
+            let contents = std::fs::read_to_string(path);
 
             if let (Some(name), Ok(contents)) = (name, contents) {
                 return (name, contents);
