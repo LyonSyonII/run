@@ -59,6 +59,17 @@ rs cmd rs(name) {
   println!("Hello $name from Rust!");
 }
 
+// C needs you to define the main function
+// It's not done automatically because you might want to define other functions
+/// C command
+c cmd c(name) {
+  #include <stdio.h>
+  int main() {
+    printf("Hello $name from C!\n");
+    return 0;
+  }
+}
+
 // Multiple arguments are separated by spaces
 // All arguments are positional and required (at the moment)
 cmd args(name age) {

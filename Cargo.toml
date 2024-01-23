@@ -19,6 +19,7 @@ beef = { version = "0.5.2", features = ["const_fn"] }
 clap = { version = "4.4.18", default-features = false, features = ["string"] }
 clap_complete = { version = "4.4.9" }
 colored = "2.1.0"
+enum_dispatch = "0.3.12"
 indexmap = { version = "2.1.0" }
 md5 = "0.7.0"
 peg = "0.8.2"

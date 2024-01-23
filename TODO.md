@@ -1,7 +1,7 @@
 # TODO
 
 ## Features
-- [] Global variables
+- [x] Constants
 - [] Optional arguments
 - [] --run <LANG\> option, runs stdin as that language
 - [] Run commands from languages 

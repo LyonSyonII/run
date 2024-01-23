@@ -45,7 +45,6 @@ fn main() -> std::io::Result<()> {
             .unwrap_or(dot)
     };
 
-    // println!("{file:?}, {path:?}, {:?}", path.canonicalize());
     let runfile = match parser::runfile(&input, path) {
         Ok(r) => match r {
             Ok(r) => r,
