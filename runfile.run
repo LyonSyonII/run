@@ -67,7 +67,13 @@ c cmd c(name) {
   #include <stdio.h>
   int main() {
     printf("Hello $name from C!\n");
-    return 0;
+  }
+}
+
+c++ cmd cpp(name) {
+  #include <iostream>
+  int main() {
+    std::cout << "Hello $name from C++!" << std::endl;
   }
 }
 

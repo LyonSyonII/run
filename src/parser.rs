@@ -27,7 +27,7 @@ peg::parser! {
         pub rule doc() -> String = c:(("///" c:$([^'\n']*){ c.trim() }) ** "\n") { c.join("\n") }
         pub rule comment() = (!"///" "//" [^'\n']*) ++ "\n" / "/*" (!"*/" [_])* "*/"
 
-        pub rule language() -> Result<Language, Error> = start:pos() i:ident() end:pos() __ ("fn"/"cmd")? {
+        pub rule language() -> Result<Language, Error> = start:pos() i:$([^' '|'\n'|'\t'|'\r']+) end:pos() __ ("fn"/"cmd")? {
             i.parse().map_err(|e| Error::new(e, start, end))
         } / ("fn"/"cmd") {
             Ok(Language::Shell)
