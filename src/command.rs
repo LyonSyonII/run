@@ -56,14 +56,12 @@ impl<'i> Command<'i> {
         let args = self
             .args
             .iter()
-            .map(|a| fmt!("<{}>", a.to_uppercase()))
-            .reduce(|acc, s| fmt!("{acc} {s}"))
-            .unwrap_or_default()
+            .fold(String::new(), |acc, a| acc + "<" + &a.to_uppercase() + ">" + " ")
             .cyan();
         if name.contains("default") {
-            return fmt!("{usage} {parents} {args}{:\n<newlines$}", "");
+            return format!("{usage} {parents} {args}{}", "\n".repeat(newlines));
         }
-        fmt!("{:\n<newlines$}{usage} {parents} {name} {args}", "")
+        format!("{}{usage} {parents} {name} {args}", "\n".repeat(newlines))
     }
 
     pub fn doc_raw(&self) -> &str {

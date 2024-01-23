@@ -1,5 +1,3 @@
-// TODO: Fix variable escaping highlight on unquoted strings
-
 /// The default command gets executed when the program is called without arguments
 cmd default() {
   # 'doc' is a special variable that contains the whole documentation of the program
