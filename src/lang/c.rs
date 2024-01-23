@@ -2,16 +2,16 @@ use std::io::Write;
 
 use crate::strlist::Str;
 
-const BINARY: &str = "gcc";
+const BINARIES: &[&str] = &["gcc", "clang"];
 
 pub(crate) fn installed() -> bool {
-    which::which(BINARY).is_ok()
+    BINARIES.iter().any(|&binary| which::which(binary).is_ok())
 }
 
 pub(crate) fn program() -> Result<std::process::Command, Str<'static>> {
-    which::which(BINARY)
+    BINARIES.iter().find_map(|binary| which::which(binary).ok())
         .map(std::process::Command::new)
-        .map_err(|error| super::exe_not_found(BINARY, error))
+        .ok_or(super::exe_not_found("gcc or clang", which::Error::CannotFindBinaryPath))
         .or_else(|error| crate::nix::nix_shell(["gcc"], "gcc").ok_or(error))
 }
 
@@ -21,7 +21,7 @@ pub(crate) fn execute(input: &str) -> Result<(), Str<'_>> {
     let compile = program()?
         .args(["main.c", "-o", "main"])
         .output()
-        .map_err(|error| super::execution_failed(BINARY, error))?;
+        .map_err(|error| super::execution_failed("gcc/clang", error))?;
     
     if !compile.status.success() {
         let err =
@@ -31,7 +31,7 @@ pub(crate) fn execute(input: &str) -> Result<(), Str<'_>> {
 
     let out = std::process::Command::new("./main")
         .output()
-        .map_err(|error| super::execution_failed(BINARY, error))?;
+        .map_err(|error| super::execution_failed("gcc/clang", error))?;
 
     if out.status.success() {
         std::io::stdout()

@@ -72,6 +72,9 @@ fn main() -> std::io::Result<()> {
 fn print_help() {
     println!("Runs a runfile in the current directory");
     println!("Possible runfile names: [run, runfile] or any ending in '.run'\n");
+    println!("Commands can be written in any language supported by runfile");
+    println!("If the language's compiler is not installed, 'run' will try to use nix-shell instead\n");
+    println!("See {} for more information\n", "https://github.com/lyonsyonii/run".bold());
     // TODO: Add possible languages and basic examples
     // TODO: Explain what will do if nix is present
     println!(
@@ -93,7 +96,7 @@ fn print_help() {
         "--commands".bright_cyan().bold()
     );
     println!(
-        "      {}\tPrints the completion script for the current shell.",
+        "      {}\tPrints the completion script for the current shell",
         "--print-complete".bright_cyan().bold()
     );
     println!(

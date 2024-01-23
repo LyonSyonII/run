@@ -27,11 +27,11 @@ pub fn nix_shell(
 ) -> Option<std::process::Command> {
     let packages = packages.as_ref();
     let nix = get_nix()?;
-
+    
     if is_flakes(&nix) {
         eprintln!(
             "{}",
-            "Using flakes (could take a while if it's the first time):".dimmed()
+            "Using flakes (could take a while if it's the first time):".dimmed().bright_black()
         );
         let mut cmd = std::process::Command::new(nix);
         cmd.arg("shell")
