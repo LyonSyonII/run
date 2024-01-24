@@ -70,14 +70,7 @@ c cmd c(name) {
   }
 }
 
-cpp cmd cpp(name) {
-  #include <iostream>
-  int main() {
-    std::cout << "Hello $name from C++!" << std::endl;
-  }
-}
-
-c++ cmd cpp2(name) {
+c++ cmd cpp(name) {
   #include <iostream>
   int main() {
     std::cout << "Hello $name from C++!" << std::endl;
