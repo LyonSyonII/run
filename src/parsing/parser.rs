@@ -1,13 +1,12 @@
 use crate::command::Command;
 use crate::error::Error;
 use crate::lang::Language;
+use crate::parsing::error::ParseError;
 use crate::runfile::Runfile;
 use crate::strlist::Str;
-use crate::utils::Goodbye;
 pub use runfile::runfile;
 
 use crate::HashMap;
-use std::format as fmt;
 
 enum Element<'i> {
     Command(&'i str, Command<'i>),
@@ -28,11 +27,11 @@ peg::parser! {
         pub rule comment() = (!"///" "//" [^'\n']*) ++ "\n" / "/*" (!"*/" [_])* "*/"
 
         pub rule language() -> Result<Language, Error> = start:pos() i:$([^' '|'\n'|'\t'|'\r']+) end:pos() __ ("fn"/"cmd")? {
-            i.parse().map_err(|e| Error::new(e, start, end))
+            i.parse().map_err(|e| Error::PParseLang(e, start, end))
         } / ("fn"/"cmd") {
             Ok(Language::Shell)
         } / start:pos() end:pos() {
-            Error::err("Expected language or fn/cmd", start, end)
+            Error::PExpectedLangOrCmd(start, end).err()
         }
         pub rule ident() -> &'input str = $(['a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '-']+)
         pub rule arguments() -> Vec<&'input str> = "(" v:(ident() ** " ") " "? ")" { v }
@@ -65,7 +64,7 @@ peg::parser! {
         pub rule include(dir: &std::path::Path) -> Element<'input> = __ "in" __ start:pos() name:($([^'\n']+)) end:pos() __ {
             // TODO: Remove leak (should not impact a lot, the string will need to be alive the whole program anyway)
             let path = {
-                if name.starts_with("/") {
+                if name.starts_with('/') {
                     std::path::PathBuf::from(name)
                 } else {
                     dir.join(name)
@@ -73,11 +72,11 @@ peg::parser! {
             };
             let file = match std::fs::read_to_string(&path) {
                 Ok(file) => file.leak(),
-                Err(e) => return Element::Error(Error::new(fmt!("Could not read file '{name}': {e}"), start, end))
+                Err(e) => return Error::PIncludeRead(e.to_string(), name.to_string(), start, end).into()
             };
             let include = match runfile::runfile(file, path.parent().unwrap_or(dir)) {
                 Ok(include) => include,
-                Err(e) => return Element::Error(Error::new(fmt!("Could not parse file '{name}': {e}"), start, end))
+                Err(e) => return Error::PIncludeParse(e.to_string(), name.to_string(), start, end).into(),
             };
             match include {
                 Ok(include) => Element::Include(name, include),
@@ -90,7 +89,7 @@ peg::parser! {
         pub rule math() -> Result<Str<'input>, Error> = start:pos() "$(" e:$((!(")"[' ']*"\n") [_])*) ")" end:pos() {
             match arithmetic::calculate(e.trim()) {
                 Ok(v) => Ok(v.to_string().into()),
-                Err(e) => Error::err("Could not parse math expression", start, end)
+                Err(e) => Error::PMathExpression(start, end).err()
             }
         }
         pub rule var() -> Element<'input> = __ "const" _ name:ident() __ "=" __ v:(m:math() { m }/v:value() { Ok(Str::from(v)) }) __ {
@@ -165,6 +164,12 @@ peg::parser!( grammar arithmetic() for str {
     rule number() -> f64
         = n:$(['0'..='9']+"."?['0'..='9']* / ['0'..='9']*"."?['0'..='9']+) { n.parse().unwrap() }
 });
+
+impl From<Error> for Element<'_> {
+    fn from(e: Error) -> Self {
+        Element::Error(e)
+    }
+}
 
 #[cfg(test)]
 mod test {

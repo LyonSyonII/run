@@ -11,7 +11,7 @@ mod command;
 mod error;
 mod lang;
 mod nix;
-mod parser;
+mod parsing;
 mod runfile;
 mod strlist;
 mod utils;
@@ -45,7 +45,7 @@ fn main() -> std::io::Result<()> {
             .unwrap_or(dot)
     };
 
-    let runfile = match parser::runfile(&input, path) {
+    let runfile = match parsing::parser::runfile(&input, path) {
         Ok(r) => match r {
             Ok(r) => r,
             Err(errors) => {
@@ -110,24 +110,17 @@ fn print_help() {
 }
 
 fn print_errors(
-    errors: impl AsRef<[error::Error]>,
+    errors: impl AsRef<[crate::error::Error]>,
     file: impl AsRef<str>,
     input: impl AsRef<str>,
 ) -> std::io::Result<()> {
+    let file = file.as_ref();
+    let input = input.as_ref();
     let errors = errors.as_ref();
     let mut colors = ColorGenerator::new();
 
     for e in errors {
-        let file = file.as_ref();
-        ariadne::Report::build(ReportKind::Error, file, e.start)
-            .with_message(e.msg())
-            .with_label(
-                Label::new((file, e.start..e.end))
-                    .with_message(e.msg().fg(Color::Red))
-                    .with_color(colors.next()),
-            )
-            .finish()
-            .eprint((file, Source::from(&input)))?;
+        e.eprint(file, input, colors.next())?;
     }
 
     Ok(())

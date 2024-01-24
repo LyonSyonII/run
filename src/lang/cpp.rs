@@ -22,7 +22,7 @@ pub(crate) fn program() -> Result<std::process::Command, Str<'static>> {
 
 pub(crate) fn execute(input: &str) -> Result<(), Str<'_>> {
     create_project(input)?;
-    
+
     let compile = program()?
         .args(["main.cpp", "-o", "main"])
         .output()

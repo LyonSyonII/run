@@ -3,6 +3,7 @@
 ## Features
 - [x] Constants
 - [] Optional arguments
+- [] Command alias
 - [] --run <LANG\> option, runs stdin as that language
 - [] Run commands from languages 
   - [] Shell/Bash (use --run option to call self and pipe )

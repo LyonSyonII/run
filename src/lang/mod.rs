@@ -91,7 +91,7 @@ impl std::str::FromStr for Language {
             "c++" | "cpp" => Ok(Self::Cpp),
             "py" | "python" => Ok(Self::Python),
             "js" | "javascript" => Ok(Self::Javascript),
-            _ => Err(format!("Unknown language '{s}'; expected one of [cmd, fn, sh, shell, bash, rs, rust, py, python, js, javascript]")),
+            _ => Err(s.to_owned()),
         }
     }
 }
