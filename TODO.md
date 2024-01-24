@@ -20,7 +20,7 @@
 - [] Fish
 - [] Typescript
 - [x] C
-- [] C++
+- [x] C++
 - [] C#
 - [] Java
 
@@ -33,6 +33,9 @@
     - [] Npm dependencies
 - [] C#
     - [] Nuget dependencies?
+
+## Documentation
+- [] Add basic README with at least a copy of the --help menu
 
 
 ## Experimentation

@@ -53,7 +53,7 @@
                 },
                 {
                     "name": "keyword.operator.declare.run",
-                    "match": "="
+                    "match": "\\b(=)\\b"
                 }
             ]
         },
@@ -150,7 +150,7 @@
                     "include": "#keywords"
                 },
                 {
-                    "match": "([a-zA-Z_\\-0-9]+)\\s*\\(\\s*(([a-zA-Z_\\-0-9]*\\s*)*)\\)\\s*",
+                    "match": "([^\\s]+)\\s*\\(\\s*(([^\\s]*\\s*)*)\\)\\s*",
                     "captures": {
                         "1": { "name": "entity.name.function.run" },
                         "2": { "name": "variable.parameter.function.run" }
@@ -203,10 +203,12 @@
                     ]
                 },
                 {
-                    "begin": "\\b(cpp|c\\+\\+)\\s+(?=[\\s\\S]*{)",
-                    "end": "(?<=})",
+                    "begin": "(cpp|c\\+\\+)\\s+([^\\s]+)\\s*\\(\\s*(([^\\s]*\\s*)*)\\)\\s*{",
+                    "end": "(?<=\\})",
                     "beginCaptures": {
-                        "0": { "name": "entity.name.class.run" }
+                        "1": { "name": "entity.name.class.run" },
+                        "2": { "name": "entity.name.function.run" },
+                        "3": { "name": "variable.parameter.function.run" }
                     },
                     "patterns": [
                         { "include": "#function" },
