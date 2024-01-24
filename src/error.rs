@@ -11,6 +11,7 @@ pub enum Error {
     /// `(lang, start, end)`
     PParseLang(String, Start, End),
     PExpectedLangOrCmd(Start, End),
+    PExpectedCmdName(Start, End),
     /// `(std::io::Error, start, end)`
     PIncludeRead(String, Name, Start, End),
     /// `(peg::ParseError, start, end)`
@@ -23,13 +24,15 @@ pub enum Error {
 impl Error {
     fn ariadne(
         msg: impl Into<String>,
-        start: usize,
-        end: usize,
+        start: &usize,
+        end: &usize,
         file: &str,
         input: &str,
         color: ariadne::Color,
     ) -> std::io::Result<()> {
         let msg = msg.into();
+        let start = *start;
+        let end = *end;
 
         ariadne::Report::build(ariadne::ReportKind::Error, file, start)
             .with_message(&msg)
@@ -50,11 +53,12 @@ impl Error {
 
         match self {
             Error::Unknown => eprintln!("Unknown error, please report this issue on {}", REPO),
-            Error::PExpectedLangOrCmd(start, end) => ariadne("Expected language or fn/cmd", *start, *end)?,
-            Error::PParseLang(s, start, end) => ariadne(&f!("Unknown language '{s}'; expected one of [cmd, fn, sh, shell, bash, rs, rust, py, python, js, javascript]"), *start, *end)?,
-            Error::PIncludeRead(e, name, start, end) => ariadne(&f!("Failed to read included file '{name}': {e}"), *start, *end)?,
-            Error::PIncludeParse(e, name, start, end) => ariadne(&f!("Failed to parse included file '{name}': {e}"), *start, *end)?,
-            Error::PMathExpression(start, end) => ariadne("Failed to parse math expression", *start, *end)?,
+            Error::PExpectedLangOrCmd(start, end) => ariadne("Expected language or fn/cmd", start, end)?,
+            Error::PExpectedCmdName(start, end) => ariadne("Expected command name", start, end)?,
+            Error::PParseLang(s, start, end) => ariadne(&f!("Unknown language '{s}'; expected one of [cmd, fn, sh, shell, bash, rs, rust, py, python, js, javascript]"), start, end)?,
+            Error::PIncludeRead(e, name, start, end) => ariadne(&f!("Failed to read included file '{name}': {e}"), start, end)?,
+            Error::PIncludeParse(e, name, start, end) => ariadne(&f!("Failed to parse included file '{name}': {e}"), start, end)?,
+            Error::PMathExpression(start, end) => ariadne("Failed to parse math expression", start, end)?,
         }
 
         Ok(())

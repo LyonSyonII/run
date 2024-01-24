@@ -24,7 +24,7 @@ cmd constants() {
 // Define an argument for a command by writing its name between the parentheses
 // Use it in the command with the syntax: '$argument'
 /// Shell command
- shell(name) {
+sh cmd shell(name) {
   # Variable interpolation is done in all languages with $argument
   echo Hello $name from the Shell!
 }

@@ -26,33 +26,45 @@ peg::parser! {
         pub rule doc() -> String = c:(("///" c:$([^'\n']*){ c.trim() }) ** "\n") { c.join("\n") }
         pub rule comment() = (!"///" "//" [^'\n']*) ++ "\n" / "/*" (!"*/" [_])* "*/"
 
-        pub rule language() -> Result<Language, Error> = start:pos() i:$([^' '|'\n'|'\t'|'\r']+) end:pos() __ ("fn"/"cmd")? {
+        pub rule language() -> Result<Language, Error> = start:pos() i:$([^' '|'\n'|'\t'|'\r'|'('|')'|'{'|'}'|'['|']']+) end:pos() __ ("fn"/"cmd")? {
             i.parse().map_err(|e| Error::PParseLang(e, start, end))
         } / ("fn"/"cmd") {
             Ok(Language::Shell)
         } / start:pos() end:pos() {
             Error::PExpectedLangOrCmd(start, end).err()
         }
+        pub rule name() -> Result<&'input str, Error> = __ name:ident() __ {
+            Ok(name)
+        } / start:pos() end:pos() {
+            Error::PExpectedCmdName(start, end).err()
+        }
         pub rule ident() -> &'input str = $(['a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '-']+)
         pub rule arguments() -> Vec<&'input str> = "(" v:(ident() ** " ") " "? ")" { v }
         pub rule body_start() -> usize = s:$['{']+ { s.len() }
         pub rule body(count: usize) -> &'input str = $((!(['{'|'}']*<{count}>)[_] / "{"*<1, {(count-1).max(1)}> body((count-1).max(1)) "}"*<1, {(count-1).max(1)}>)*)
-        pub rule command() -> Element<'input> = __ doc:doc() __ lang:language() __ name:ident() __ args:arguments() __ count:body_start() script:body(count) ['}']*<{count}> __ {
+        pub rule command() -> Element<'input> = __ doc:doc() __ lang:language() __ name:name() __ args:arguments() __ count:body_start() script:body(count) ['}']*<{count}> __ {
            let mut errors = Vec::new();
            let lang = match lang {
-               Ok(lang) => lang,
-               Err(e) => {
-                   errors.push(e);
-                   Language::Shell
-               }
+                Ok(lang) => lang,
+                Err(e) => {
+                    errors.push(e);
+                    Language::Shell
+                }
            };
+           let name = match name {
+                Ok(name) => name,
+                Err(e) => {
+                        errors.push(e);
+                        "unknown"
+                }
+            };
 
-           if errors.is_empty() {
-               let command = Command::new(name, doc, lang, args, script);
-               Element::Command(name, command)
-           } else {
-               Element::Errors(errors)
-           }
+            if errors.is_empty() {
+                let command = Command::new(name, doc, lang, args, script);
+                Element::Command(name, command)
+            } else {
+                Element::Errors(errors)
+            }
         }
         pub rule subcommand(dir: &std::path::Path) -> Element<'input> = __ doc:doc() __ "sub" __ name:ident() __ "{" sub:runfile(dir) "}" __ {
             match sub {
