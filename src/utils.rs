@@ -1,4 +1,4 @@
-pub(self) trait Check<T> {
+pub(crate) trait Check<T> {
     fn check(self) -> Option<T>
     where
         Self: Sized;

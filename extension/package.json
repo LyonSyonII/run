@@ -1,7 +1,7 @@
 {
   "name": "runfile",
   "displayName": "Runfile",
-  "description": "Syntax highlight for Runfile",
+  "description": "Language support for Run",
   "author": {
     "name": "Liam Garriga",
     "email": "liam@garriga.dev",
@@ -11,7 +11,8 @@
     "type": "github",
     "url": "https://github.com/lyonsyonii/run"
   },
-  "icon": "assets/icon-dark.png",
+  "keywords": ["run", "runfile", "syntax", "highlight", "language", "support"],
+  "icon": "../assets/icon.png",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.85.0"
@@ -23,8 +24,8 @@
     "languages": [{
       "id": "run",
       "icon": {
-        "light": "../assets/icon.svg",
-        "dark": "../assets/icon.svg"
+        "light": "../assets/icon.png",
+        "dark": "../assets/icon.png"
       },
       "aliases": ["Run", "run", "Runfile", "runfile"],
       "extensions": ["runfile", "run"],

@@ -54,7 +54,9 @@ impl Error {
 
     pub fn eprint(&self, file: &str, input: &str, color: ariadne::Color) -> std::io::Result<()> {
         use format as f;
-        let ariadne = |msg: &str, start: &usize, end: &usize| Self::ariadne(msg, *start, *end, file, input, color);
+        let ariadne = |msg: &str, start: &usize, end: &usize| {
+            Self::ariadne(msg, *start, *end, file, input, color)
+        };
 
         match self {
             Error::Unknown => eprintln!("Unknown error, please report this issue on {}", REPO),
@@ -70,10 +72,10 @@ impl Error {
             Error::PIncludeParse(e, name, start, end) => ariadne(&f!("Failed to parse included file '{name}': {e}"), start, end)?,
             Error::PMathExpression(start, end) => ariadne("Failed to parse math expression", start, end)?,
         }
-        
+
         Ok(())
     }
-    
+
     pub fn err<T>(self) -> Result<T, Self> {
         Err(self)
     }
