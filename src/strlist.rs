@@ -1,4 +1,4 @@
-use colored::{Color, Colorize, Style, Styles};
+use colored::{Color, Colorize};
 
 pub type Str<'a> = beef::lean::Cow<'a, str>;
 
@@ -14,6 +14,7 @@ pub struct StrListSlice<'a> {
     bold: bool,
 }
 
+#[allow(dead_code)]
 impl<'a> StrList<'a> {
     pub fn new(separator: impl Into<Str<'a>>) -> Self {
         Self {
@@ -86,6 +87,7 @@ impl<'a> StrList<'a> {
     }
 }
 
+#[allow(dead_code)]
 impl<'a> StrListSlice<'a> {
     fn new(elements: &'a [Str<'a>]) -> Self {
         Self {
@@ -174,26 +176,9 @@ impl<'a> IntoIterator for StrList<'a> {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(mut self) -> Self::IntoIter {
-        // TODO: drain(1..) is a hack to remove the separator, can probably be done with unsafe and pointers
-        self.elements.drain(1..).collect::<Vec<_>>().into_iter()
-        /*
-        let separator_ptr = self.elements.as_mut_ptr();
-        let elements_ptr = unsafe { separator_ptr.add(1) };
-
-        // SAFETY: If the original Vec only has one element (separator), len is 1, so the new iterator is empty
-        let elements = if self.elements.len() <= 1 {
-            Vec::new()
-        }else {
-            let length = self.elements.len() - 1;
-            let capacity = self.elements.capacity() - 1;
-            unsafe { Vec::from_raw_parts(elements_ptr, length, capacity) }
-        };
-
-        std::mem::forget(self);
-
-        // SAFETY: `elements` always has at least one element, the separator, so it's safe to deallocate it
-        unsafe { std::alloc::dealloc(separator_ptr as *mut u8, std::alloc::Layout::new::<Str>()) };
-        elements.into_iter() */
+        // Remove the separator
+        self.elements.remove(0);
+        self.elements.into_iter()
     }
 }
 

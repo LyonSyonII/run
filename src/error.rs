@@ -6,6 +6,7 @@ type Start = usize;
 type End = usize;
 type Name = String;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum Error {
     /// `(lang, start, end)`

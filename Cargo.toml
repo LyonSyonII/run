@@ -8,34 +8,27 @@ edition = "2021"
 authors = ["Liam Garriga <liam@garriga.dev>"]
 repository = "https://github.com/lyonsyonii/run"
 license = "GPL-3.0"
-default-run = "run"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+# https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
 name = "run"
 path = "src/main.rs"
 
-[[bin]]
-name = "runfile"
-path = "src/main.rs"
-
-
 [dependencies]
-aho-corasick = "1.1.2"
-app_dirs2 = "2.5.5"
-ariadne = "0.4.0"
-beef = { version = "0.5.2", features = ["const_fn"] }
-clap = { version = "4.4.18", default-features = false, features = ["string"] }
-clap_complete = { version = "4.4.9" }
-colored = "2.1.0"
-enum_dispatch = "0.3.12"
-indexmap = { version = "2.1.0" }
-md5 = "0.7.0"
-peg = "0.8.2"
-read_pipe = "0.1.2"
-which = "6.0.0"
-xxhash-rust = { version = "0.8.8", features = ["xxh3"] }
+peg = "0.8.2"                                                                   # Parser generator
+ariadne = "0.4.0"                                                               # Better parser error reports
+colored = "2.1.0"                                                               # Colorize output
+aho-corasick = "1.1.2"                                                          # Fast string replace (used in variable replacement)
+beef = { version = "0.5.2", features = ["const_fn"] }                           # Slimmer Cow<str>
+read_pipe = "0.1.2"                                                             # Detect if runfile is being piped into
+clap_complete = { version = "4.4.9" }                                           # Generate completions for CLI
+clap = { version = "4.4.18", default-features = false, features = ["string"] }  # Needed for clap_complete
+which = "6.0.0"                                                                 # Find executables in PATH
+indexmap = { version = "2.1.0" }                                                # Keep order of commands as written in runfile
+app_dirs2 = "2.5.5"                                                             # Cross-platform app dirs for compilation cache
+md5 = "0.7.0"                                                                   # Hash scripts for caching                           
+xxhash-rust = { version = "0.8.8", features = ["xxh3"] }                        # Faster hashing for hashmap
 
 [profile.dev]
 codegen-backend = "cranelift"
@@ -46,3 +39,4 @@ lto = true          # Enable Link Time Optimization
 codegen-units = 1   # Reduce number of codegen units to increase optimizations.
 panic = "abort"     # Abort on panic
 strip = true        # Automatically strip symbols from the binary.
+debug = false       # Disable debug symbols

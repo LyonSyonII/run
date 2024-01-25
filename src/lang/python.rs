@@ -1,7 +1,4 @@
 use std::io::Write;
-
-use colored::Colorize;
-
 use crate::strlist::Str;
 
 const BINARY: &str = "python";
