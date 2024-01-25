@@ -1,7 +1,7 @@
 use crate::command::Command;
 use crate::error::Error;
 use crate::lang::Language;
-use crate::parsing::error::ParseError;
+
 use crate::runfile::Runfile;
 use crate::strlist::Str;
 pub use runfile::runfile;
@@ -39,7 +39,7 @@ peg::parser! {
             Error::PExpectedCmdName(start, end).err()
         }
         pub rule ident() -> &'input str = $(['a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '-']+)
-        pub rule arguments() -> Result<Vec<&'input str>, Error> = start:pos() s:"("? v:(ident() ** " ") " "? e:")"? end:pos() { 
+        pub rule arguments() -> Result<Vec<&'input str>, Error> = start:pos() s:"("? v:(ident() ** " ") " "? e:")"? end:pos() {
             match (s.is_none(), e.is_none()) {
                 (true, false) => Error::PExpectedOpenParen(start, end).err(),
                 (false, true) => Error::PExpectedCloseParen(start, end).err(),
@@ -47,7 +47,7 @@ peg::parser! {
                 (false, false) => Ok(v)
             }
         }
-        pub rule body_start() -> usize = s:$['{']+ { s.len() } /* 
+        pub rule body_start() -> usize = s:$['{']+ { s.len() } /*
         } / start:pos() end:pos() {
             Error::PExpectedBodyStart(start, end).err()
         } */
@@ -64,7 +64,7 @@ peg::parser! {
                     }
                 }
             }
-            
+
             let lang = unwrap(lang, Language::Shell, &mut errors);
             let name = unwrap(name, "", &mut errors);
             let args = unwrap(args, Vec::new(), &mut errors);

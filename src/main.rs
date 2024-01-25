@@ -1,6 +1,5 @@
 use ariadne::{Color, ColorGenerator};
 use colored::Colorize as _;
-pub use std::format as fmt;
 use strlist::Str;
 use utils::OptionExt as _;
 
@@ -69,8 +68,12 @@ fn main() -> std::io::Result<()> {
 }
 
 fn print_help() {
+    println!(
+        "{}",
+        "Run commands in the languages you love!\n".dimmed().bold()
+    );
     println!("Runs a runfile in the current directory");
-    println!("Possible runfile names: [run, runfile] or any ending in '.run'\n");
+    println!("Possible names: [run, runfile] or any ending in '.run'\n");
     println!("Commands can be written in any language supported by runfile");
     println!(
         "If the language's compiler is not installed, 'run' will try to use nix-shell instead\n"
