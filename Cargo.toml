@@ -2,14 +2,21 @@ cargo-features = ["codegen-backend"]
 
 [package]
 name = "runfile"
+description = "A makefile alternative for running commands in the languages you love."
 version = "0.1.0"
 edition = "2021"
+authors = ["Liam Garriga <liam@garriga.dev>"]
+repository = "https://github.com/lyonsyonii/run"
 license = "GPL-3.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [[bin]]
 name = "run"
+path = "src/main.rs"
+
+[[bin]]
+name = "runfile"
 path = "src/main.rs"
 
 [dependencies]

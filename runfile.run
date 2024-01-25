@@ -1,7 +1,110 @@
-cmd default() 
-  echo '$doc'
+/// The default command gets executed when the program is called without arguments
+cmd default() {
+  # 'doc' is a special variable that contains the whole documentation of the program
+  echo -n "$doc";
 }
 
-sub aa {
-  
+// You can declare constants and use them in any command
+const constant = Constantinople
+// Constants can contain any character (even spaces)
+const constant_with_spaces = Constantinople is a nice city, I'd like to visit it one day
+// If you want to preserve prefix whitespaces, you have to put the value between quotes
+// Either double or single quotes can be used
+const whitespace = "  \t  "
+// Use '$(...)' to evaluate a math expression
+const math = $(1 + 2 * 3 / 4)
+/// Command that uses constants
+cmd constants() {
+  echo constant = $constant;
+  echo "constant_with_spaces = $constant_with_spaces";
+  echo 'whitespace = "$whitespace"';
+  echo '1 + 2 * 3 / 4 = $math';
+}
+
+// Define an argument for a command by writing its name between the parentheses
+// Use it in the command with the syntax: '$argument'
+/// Shell command
+sh cmd shell (name) {
+  # Variable interpolation is done in all languages with $argument
+  echo Hello $name from the Shell!
+}
+
+// The language of a command can be specified by writing its name before 'cmd'
+// If no language is specified, the command will be executed in the default shell
+/// Bash command
+bash cmd bash(name) {
+  echo "Hello $name from Bash!";
+}
+
+// 'cmd' can be omitted if the language is specified
+// Variables are replaced with their value before the command is executed,
+// so if you want to use one as a String, you have to put it between quotes
+/// Python command
+py python(name) {
+  print("Hello $name from Python!")
+}
+
+// Any code is valid in the command's body as long as it's valid in the command's language
+/// Javascript command
+js cmd javascript(name) {
+  function greet() {
+    console.log("Hello $name from Javascript!");
+  }
+  greet();
+}
+
+// Not only interpreted languages are supported, you can also use compiled languages
+// These get compiled when the specific command is called for the first time
+/// Rust command
+rs cmd rust(name) {
+  println!("Hello $name from Rust!");
+}
+
+// C needs you to define the main function
+// It's not done automatically because you might want to define other functions
+/// C command
+c cmd c(name) {
+  #include <stdio.h>
+  int main() {
+    printf("Hello $name from C!\n");
+  }
+}
+
+c++ cmd cpp(name) {
+  #include <iostream>
+  int main() {
+    std::cout << "Hello $name from C++!" << std::endl;
+  }
+}
+
+// Multiple arguments are separated by spaces
+// All arguments are positional and required (at the moment)
+cmd args(name age) {
+  echo "Hello $name, you are $age years old."
+}
+
+// You can define subcommands with the 'sub' keyword
+// Subcommands can be called with the syntax: 'run subcommand'
+// Use 'run subcommand --help' to see the subcommand's documentation
+/// I'm a subcommand!
+sub subcommand {
+  // Subcommands can have default commands too
+  cmd default() {
+    echo "Hello, I'm a Subcommand!"
+  }
+}
+
+// You can include other files with the 'in' keyword and the path to the file
+// The path is relative to the current file and can contain any character (even spaces)
+in ./included command.run
+
+// Even subcommands can be included
+in ./included-subcommand.run
+
+// You can also include files in a subcommand
+// The included commands/subcommands will only be available in the subcommand
+/// This is a subcommand with included commands
+sub sub-with-included {
+  in ./included command.run
+  in ./included-subcommand.run
 }

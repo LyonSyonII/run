@@ -23,8 +23,8 @@
     "languages": [{
       "id": "run",
       "icon": {
-        "light": "./assets/icon-dark.svg",
-        "dark": "./assets/icon-dark.svg"
+        "light": "../assets/icon.svg",
+        "dark": "../assets/icon.svg"
       },
       "aliases": ["Run", "run", "Runfile", "runfile"],
       "extensions": ["runfile", "run"],
