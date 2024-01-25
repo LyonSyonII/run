@@ -2,7 +2,7 @@ cargo-features = ["codegen-backend"]
 
 [package]
 name = "runfile"
-description = "A makefile alternative for running commands in the languages you love."
+description = "Run commands in the languages you love!"
 version = "0.1.0"
 edition = "2021"
 authors = ["Liam Garriga <liam@garriga.dev>"]
@@ -26,9 +26,9 @@ clap_complete = { version = "4.4.9" }                                           
 clap = { version = "4.4.18", default-features = false, features = ["string"] }  # Needed for clap_complete
 which = "6.0.0"                                                                 # Find executables in PATH
 indexmap = { version = "2.1.0" }                                                # Keep order of commands as written in runfile
-app_dirs2 = "2.5.5"                                                             # Cross-platform app dirs for compilation cache
-md5 = "0.7.0"                                                                   # Hash scripts for caching                           
 xxhash-rust = { version = "0.8.8", features = ["xxh3"] }                        # Faster hashing for hashmap
+md5 = "0.7.0"                                                                   # Hash scripts for caching                           
+app_dirs2 = "2.5.5"                                                             # Cross-platform app dirs for compilation cache
 
 [profile.dev]
 codegen-backend = "cranelift"
