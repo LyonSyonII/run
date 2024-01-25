@@ -8,6 +8,7 @@ edition = "2021"
 authors = ["Liam Garriga <liam@garriga.dev>"]
 repository = "https://github.com/lyonsyonii/run"
 license = "GPL-3.0"
+default-run = "run"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -18,6 +19,7 @@ path = "src/main.rs"
 [[bin]]
 name = "runfile"
 path = "src/main.rs"
+
 
 [dependencies]
 aho-corasick = "1.1.2"
