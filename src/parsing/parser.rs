@@ -39,25 +39,36 @@ peg::parser! {
             Error::PExpectedCmdName(start, end).err()
         }
         pub rule ident() -> &'input str = $(['a'..='z' | 'A'..='Z' | '0'..='9' | '_' | '-']+)
-        pub rule arguments() -> Vec<&'input str> = "(" v:(ident() ** " ") " "? ")" { v }
-        pub rule body_start() -> usize = s:$['{']+ { s.len() }
-        pub rule body(count: usize) -> &'input str = $((!(['{'|'}']*<{count}>)[_] / "{"*<1, {(count-1).max(1)}> body((count-1).max(1)) "}"*<1, {(count-1).max(1)}>)*)
-        pub rule command() -> Element<'input> = __ doc:doc() __ lang:language() __ name:name() __ args:arguments() __ count:body_start() script:body(count) ['}']*<{count}> __ {
-           let mut errors = Vec::new();
-           let lang = match lang {
-                Ok(lang) => lang,
-                Err(e) => {
-                    errors.push(e);
-                    Language::Shell
-                }
-           };
-           let name = match name {
-                Ok(name) => name,
-                Err(e) => {
+        pub rule arguments() -> Result<Vec<&'input str>, Error> = start:pos() s:"("? v:(ident() ** " ") " "? e:")"? end:pos() { 
+            match (s.is_none(), e.is_none()) {
+                (true, false) => Error::PExpectedOpenParen(start, end).err(),
+                (false, true) => Error::PExpectedCloseParen(start, end).err(),
+                (true, true) => Error::PExpectedArgs(start, end).err(),
+                (false, false) => Ok(v)
+            }
+        }
+        pub rule body_start() -> usize = s:$['{']+ { s.len() } /* 
+        } / start:pos() end:pos() {
+            Error::PExpectedBodyStart(start, end).err()
+        } */
+        pub rule body_end(count: usize) = ['}']*<{count}>
+        pub rule body(count: usize) -> &'input str = $((!(['{'|'}']*<{count}>)[_] / "{"*<1, {(count-1).max(1)}> body((count-1).max(1)) "}"*<1, {(count-1).max(1)}>)*)               // TODO: Remove this atrocity
+        pub rule command() -> Element<'input> = __ doc:doc() __ lang:language() __ name:name() __ args:arguments() __ count:body_start() script:body(count) body_end(count) __ {
+            let mut errors = Vec::new();
+            fn unwrap<T>(result: Result<T, Error>, default: T, errors: &mut Vec<Error>) -> T {
+                match result {
+                    Ok(v) => v,
+                    Err(e) => {
                         errors.push(e);
-                        "unknown"
+                        default
+                    }
                 }
-            };
+            }
+            
+            let lang = unwrap(lang, Language::Shell, &mut errors);
+            let name = unwrap(name, "", &mut errors);
+            let args = unwrap(args, Vec::new(), &mut errors);
+            // unwrap(count, 0, &mut errors);
 
             if errors.is_empty() {
                 let command = Command::new(name, doc, lang, args, script);

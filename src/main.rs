@@ -1,8 +1,10 @@
-use ariadne::{Color, ColorGenerator, Fmt, Label, ReportKind, Source};
+use ariadne::{Color, ColorGenerator};
 use colored::Colorize as _;
 pub use std::format as fmt;
 use strlist::Str;
 use utils::OptionExt as _;
+
+use crate::error::Error;
 
 pub type HashMap<K, V> = indexmap::IndexMap<K, V, xxhash_rust::xxh3::Xxh3Builder>;
 
@@ -54,15 +56,12 @@ fn main() -> std::io::Result<()> {
             }
         },
         Err(e) => {
-            // print_errors(errors, file, &input)?;
-            println!("{e}");
+            let start = e.location.offset;
+            let msg = format!("Expected {}", e.expected);
+            Error::ariadne(msg, start, start, file, &input, Color::Magenta)?;
             std::process::exit(1);
         }
     };
-
-    // crate::clap::write_completions(&runfile);
-
-    // dbg!(&runfile);
 
     runfile.run((" ", [get_current_exe()?]), &args).unwrap();
 
