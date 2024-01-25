@@ -12,10 +12,8 @@ pub(crate) fn program() -> Result<std::process::Command, Str<'static>> {
     which::which(BINARY)
         .map(std::process::Command::new)
         .map_err(|error| super::exe_not_found(BINARY, error))
-        .or_else(|error| {
-            crate::nix::nix_shell(["cargo", "gcc"], "cargo")
-                .ok_or(error)
-        })}
+        .or_else(|error| crate::nix::nix_shell(["cargo", "gcc"], "cargo").ok_or(error))
+}
 
 pub(crate) fn execute(input: &str) -> Result<(), Str<'_>> {
     create_project(input)?;
@@ -51,7 +49,7 @@ fn create_project(input: &str) -> Result<(), Str<'static>> {
     let Ok(_) = std::env::set_current_dir(&path) else {
         return Err(format!("Could not set current directory to {path:?}").into());
     };
-    
+
     if std::fs::metadata(path.join("Cargo.toml")).is_err() {
         program()?
             .arg("init")

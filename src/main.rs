@@ -1,8 +1,10 @@
-use ariadne::{Color, ColorGenerator, Fmt, Label, ReportKind, Source};
+use ariadne::{Color, ColorGenerator};
 use colored::Colorize as _;
 pub use std::format as fmt;
 use strlist::Str;
 use utils::OptionExt as _;
+
+use crate::error::Error;
 
 pub type HashMap<K, V> = indexmap::IndexMap<K, V, xxhash_rust::xxh3::Xxh3Builder>;
 
@@ -11,7 +13,7 @@ mod command;
 mod error;
 mod lang;
 mod nix;
-mod parser;
+mod parsing;
 mod runfile;
 mod strlist;
 mod utils;
@@ -30,7 +32,22 @@ fn main() -> std::io::Result<()> {
     }
 
     let (file, input) = get_file(&mut args);
-    let runfile = match parser::runfile(&input) {
+    let dot = std::path::Path::new(".");
+    let path = if file == "stdin" {
+        dot
+    } else {
+        std::path::Path::new(file.as_ref())
+            .parent()
+            .map(|mut p| {
+                if p == std::path::Path::new("") {
+                    p = dot
+                }
+                p
+            })
+            .unwrap_or(dot)
+    };
+
+    let runfile = match parsing::parser::runfile(&input, path) {
         Ok(r) => match r {
             Ok(r) => r,
             Err(errors) => {
@@ -39,15 +56,12 @@ fn main() -> std::io::Result<()> {
             }
         },
         Err(e) => {
-            // print_errors(errors, file, &input)?;
-            println!("{e}");
+            let start = e.location.offset;
+            let msg = format!("Expected {}", e.expected);
+            Error::ariadne(msg, start, start, file, &input, Color::Magenta)?;
             std::process::exit(1);
         }
     };
-
-    // crate::clap::write_completions(&runfile);
-
-    // dbg!(&runfile);
 
     runfile.run((" ", [get_current_exe()?]), &args).unwrap();
 
@@ -57,8 +71,14 @@ fn main() -> std::io::Result<()> {
 fn print_help() {
     println!("Runs a runfile in the current directory");
     println!("Possible runfile names: [run, runfile] or any ending in '.run'\n");
-    // TODO: Add possible languages and basic examples
-    // TODO: Explain what will do if nix is present
+    println!("Commands can be written in any language supported by runfile");
+    println!(
+        "If the language's compiler is not installed, 'run' will try to use nix-shell instead\n"
+    );
+    println!(
+        "See {} for more information\n",
+        "https://github.com/lyonsyonii/run".bold()
+    );
     println!(
         "{} {} {}\n",
         "Usage:".bright_green().bold(),
@@ -78,7 +98,7 @@ fn print_help() {
         "--commands".bright_cyan().bold()
     );
     println!(
-        "      {}\tPrints the completion script for the current shell.",
+        "      {}\tPrints the completion script for the current shell",
         "--print-complete".bright_cyan().bold()
     );
     println!(
@@ -89,24 +109,17 @@ fn print_help() {
 }
 
 fn print_errors(
-    errors: impl AsRef<[error::Error]>,
+    errors: impl AsRef<[crate::error::Error]>,
     file: impl AsRef<str>,
     input: impl AsRef<str>,
 ) -> std::io::Result<()> {
+    let file = file.as_ref();
+    let input = input.as_ref();
     let errors = errors.as_ref();
     let mut colors = ColorGenerator::new();
 
     for e in errors {
-        let file = file.as_ref();
-        ariadne::Report::build(ReportKind::Error, file, e.start)
-            .with_message(e.msg())
-            .with_label(
-                Label::new((file, e.start..e.end))
-                    .with_message(e.msg().fg(Color::Red))
-                    .with_color(colors.next()),
-            )
-            .finish()
-            .eprint((file, Source::from(&input)))?;
+        e.eprint(file, input, colors.next())?;
     }
 
     Ok(())
@@ -123,7 +136,7 @@ fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
         if let Some(file) = file {
             if let Ok(contents) = std::fs::read_to_string(file) {
                 let file = file.to_owned().into();
-                // Remove -f and the file name
+                // Remove -f and the file name from args
                 args.drain(..=1);
                 return (file, contents);
             }
@@ -179,7 +192,7 @@ fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
             let name = path
                 .file_name()
                 .map(|p| p.to_string_lossy().to_string().into());
-            let contents = std::fs::read_to_string(file.path());
+            let contents = std::fs::read_to_string(path);
 
             if let (Some(name), Ok(contents)) = (name, contents) {
                 return (name, contents);

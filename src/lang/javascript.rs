@@ -12,10 +12,8 @@ pub(crate) fn program() -> Result<std::process::Command, Str<'static>> {
     which::which(BINARY)
         .map(std::process::Command::new)
         .map_err(|error| super::exe_not_found(BINARY, error))
-        .or_else(|error| {
-            crate::nix::nix_shell(["nodejs"], "node")
-                .ok_or(error)
-        })}
+        .or_else(|error| crate::nix::nix_shell(["nodejs"], "node").ok_or(error))
+}
 
 pub(crate) fn execute(input: &str) -> Result<(), Str<'_>> {
     let to_error = |e: std::io::Error| Str::from(e.to_string());

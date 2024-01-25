@@ -5,7 +5,7 @@ use colored::{Color, Colorize as _};
 
 use crate::{
     lang::Language,
-    strlist::{StrList, StrListSlice},
+    strlist::{Str, StrList, StrListSlice},
 };
 
 #[derive(Eq, Clone)]
@@ -56,14 +56,14 @@ impl<'i> Command<'i> {
         let args = self
             .args
             .iter()
-            .map(|a| fmt!("<{}>", a.to_uppercase()))
-            .reduce(|acc, s| fmt!("{acc} {s}"))
-            .unwrap_or_default()
+            .fold(String::new(), |acc, a| {
+                acc + "<" + &a.to_uppercase() + ">" + " "
+            })
             .cyan();
         if name.contains("default") {
-            return fmt!("{usage} {parents} {args}{:\n<newlines$}", "");
+            return format!("{usage} {parents} {args}{}", "\n".repeat(newlines));
         }
-        fmt!("{:\n<newlines$}{usage} {parents} {name} {args}", "")
+        format!("{}{usage} {parents} {name} {args}", "\n".repeat(newlines))
     }
 
     pub fn doc_raw(&self) -> &str {
@@ -112,9 +112,11 @@ impl<'i> Command<'i> {
         &self,
         parents: StrListSlice,
         args: impl AsRef<[String]>,
+        vars: impl AsRef<[(&'i str, Str<'i>)]>,
         runfile_docs: String,
     ) -> std::io::Result<()> {
         let args = args.as_ref();
+        let vars = vars.as_ref();
         let name = self.name;
         if args.iter().any(|a| a == "--help" || a == "-h") {
             self.print_help(parents, 0, &mut std::io::stdout())?;
@@ -135,18 +137,16 @@ impl<'i> Command<'i> {
         }
 
         // Remove indentation from script
-        let mut script = self.script_with_indent_fix();
+        let script = replace_all(
+            self.script_with_indent_fix(),
+            (&self.args, args),
+            vars,
+            runfile_docs,
+            self.doc(parents).to_string(),
+            self.usage(parents, Color::White, 0),
+        );
 
-        // Replace arguments
-        for (name, arg) in self.args.iter().zip(args.as_ref()) {
-            let name = fmt!("${name}");
-            script = script.replace(&name, arg);
-        }
-
-        script = script.replace("$doc", &runfile_docs);
-        script = script.replace("$cmddoc", &self.doc(parents).to_string());
-        script = script.replace("$usage", &self.usage(parents, Color::White, 0));
-
+        // Run the script
         if let Err(e) = self.lang.execute(&script) {
             eprintln!(
                 "{} {} {}{}\n",
@@ -160,6 +160,50 @@ impl<'i> Command<'i> {
 
         Ok(())
     }
+}
+
+fn replace_all(
+    script: String,
+    args: (&[&str], &[String]),
+    vars: &[(&str, Str<'_>)],
+    runfile_docs: String,
+    doc: String,
+    usage: String,
+) -> String {
+    // Replace arguments
+    type Bytes<'a> = beef::lean::Cow<'a, [u8]>;
+
+    let vars_names = vars.iter().map(|(n, _)| Bytes::owned(fmt!("${n}").into()));
+    let vars_values = vars.iter().map(|(_, v)| {
+        let patterns = ["\\n", "\\r", "\\t", "\\0", "\\\"", "\\'", "\\\\", "\\$"];
+        let replace_with = ["\n", "\r", "\t", "\0", "\"", "'", "\\", "$"];
+        let ac = aho_corasick::AhoCorasick::new(patterns).unwrap();
+        ac.replace_all(v, &replace_with).into()
+    });
+
+    let args_names = args
+        .0
+        .iter()
+        .map(|n| Bytes::owned(fmt!("${n}").into_bytes()));
+    let args_values = args.1.iter().map(|v| Str::borrowed(v));
+
+    let patterns = args_names.chain(vars_names).chain([
+        Bytes::borrowed(b"$doc"),
+        Bytes::borrowed(b"$cmddoc"),
+        Bytes::borrowed(b"$usage"),
+    ]);
+
+    let replace_with = args_values.chain(vars_values).chain([
+        Str::owned(runfile_docs),
+        Str::owned(doc),
+        Str::owned(usage),
+    ]);
+
+    let ac = aho_corasick::AhoCorasick::builder()
+        .match_kind(aho_corasick::MatchKind::LeftmostLongest)
+        .build(patterns)
+        .unwrap();
+    ac.replace_all(&script, &replace_with.collect::<Vec<_>>())
 }
 
 impl PartialEq for Command<'_> {

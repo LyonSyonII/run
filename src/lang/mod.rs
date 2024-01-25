@@ -1,4 +1,6 @@
 mod bash;
+mod c;
+mod cpp;
 mod javascript;
 mod python;
 mod rust;
@@ -16,6 +18,8 @@ pub enum Language {
     Rust,
     Python,
     Javascript,
+    C,
+    Cpp,
 }
 
 impl Language {
@@ -26,6 +30,8 @@ impl Language {
             Self::Rust => "rs",
             Self::Python => "py",
             Self::Javascript => "js",
+            Self::C => "c",
+            Self::Cpp => "c++",
         }
     }
 
@@ -34,6 +40,8 @@ impl Language {
             Language::Shell => shell::execute(input),
             Language::Bash => bash::execute(input),
             Language::Rust => rust::execute(input),
+            Language::C => c::execute(input),
+            Language::Cpp => cpp::execute(input),
             Language::Python => python::execute(input),
             Language::Javascript => javascript::execute(input),
         }
@@ -44,6 +52,8 @@ impl Language {
             Language::Shell => shell::installed(),
             Language::Bash => bash::installed(),
             Language::Rust => rust::installed(),
+            Language::C => c::installed(),
+            Language::Cpp => cpp::installed(),
             Language::Python => python::installed(),
             Language::Javascript => javascript::installed(),
         }
@@ -77,9 +87,11 @@ impl std::str::FromStr for Language {
             "cmd" | "fn" | "sh" | "shell" => Ok(Self::Shell),
             "bash" => Ok(Self::Bash),
             "rs" | "rust" => Ok(Self::Rust),
+            "c" => Ok(Self::C),
+            "c++" | "cpp" => Ok(Self::Cpp),
             "py" | "python" => Ok(Self::Python),
             "js" | "javascript" => Ok(Self::Javascript),
-            _ => Err(format!("Unknown language '{s}'; expected one of [cmd, fn, sh, shell, bash, rs, rust, py, python, js, javascript]")),
+            _ => Err(s.to_owned()),
         }
     }
 }

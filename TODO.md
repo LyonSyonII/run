@@ -1,8 +1,9 @@
 # TODO
 
 ## Features
-- [] Global variables
+- [x] Constants
 - [] Optional arguments
+- [] Command alias
 - [] --run <LANG\> option, runs stdin as that language
 - [] Run commands from languages 
   - [] Shell/Bash (use --run option to call self and pipe )
@@ -19,8 +20,8 @@
 - [] Nushell
 - [] Fish
 - [] Typescript
-- [] C
-- [] C++
+- [x] C
+- [x] C++
 - [] C#
 - [] Java
 
@@ -31,6 +32,11 @@
     - [] Cargo dependencies
 - [] Javascript
     - [] Npm dependencies
+- [] C#
+    - [] Nuget dependencies?
+
+## Documentation
+- [] Add basic README with at least a copy of the --help menu
 
 
 ## Experimentation

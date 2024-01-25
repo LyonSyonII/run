@@ -2,6 +2,15 @@
   "name": "runfile",
   "displayName": "Runfile",
   "description": "Syntax highlight for Runfile",
+  "author": {
+    "name": "Liam Garriga",
+    "email": "liam@garriga.dev",
+    "url": "https://garriga.dev"
+  },
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/lyonsyonii/run"
+  },
   "icon": "assets/icon-dark.png",
   "version": "0.0.1",
   "engines": {
@@ -14,8 +23,8 @@
     "languages": [{
       "id": "run",
       "icon": {
-        "light": "./assets/icon-dark.svg",
-        "dark": "./assets/icon-dark.svg"
+        "light": "../assets/icon.svg",
+        "dark": "../assets/icon.svg"
       },
       "aliases": ["Run", "run", "Runfile", "runfile"],
       "extensions": ["runfile", "run"],
