@@ -209,7 +209,7 @@ impl<'i> Runfile<'i> {
             String::from_utf8(buf).map_err(|e| e.to_string())
         };
 
-        let Some(first) = first.map(String::as_str) else {
+        let default = || {
             let Some(cmd) = self.commands.get("default") else {
                 self.print_help(
                     "Error: No command specified and no default command found"
@@ -226,6 +226,10 @@ impl<'i> Runfile<'i> {
                 .map_err(|e| f!("Command execution failed: {}", e).into());
         };
 
+        let Some(first) = first.map(String::as_str) else {
+            return default();
+        };
+
         if let Some(cmd) = self.commands.get(first) {
             cmd.run(
                 parents.as_slice(),
@@ -236,7 +240,8 @@ impl<'i> Runfile<'i> {
             .map_err(|e| f!("Command execution failed: {}", e).into())
         } else if let Some(sub) = self.subcommands.get(first) {
             sub.run(parents.append(first), args.get(1..).unwrap_or_default())
-        } else {
+        }
+        else if self.commands.get("default").is_some_and(|d| d.args().is_empty()) {
             self.print_help(
                 f!("Error: Could not find command or subcommand '{}'", first)
                     .bright_red()
@@ -245,6 +250,8 @@ impl<'i> Runfile<'i> {
                 &mut std::io::stderr(),
             )?;
             std::process::exit(1);
+        } else {
+            default()
         }
     }
 }
