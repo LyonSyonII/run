@@ -62,6 +62,6 @@ fn create_project(input: &str) -> Result<(), Str<'static>> {
 
     std::fs::write(path.join("main.cpp"), input)
         .map_err(|e| format!("Could not write input to main.cpp\nComplete error: {e}"))?;
-
+    
     Ok(())
 }

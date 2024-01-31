@@ -42,5 +42,9 @@
 ## Experimentation
 - [] Use `git bash` on Windows when language is `sh/bash`
 
+## Code Improvement
+- [] Use common "create_project" for all languages (based on cpp.rs)
+- [] Do not capture command output (inherit instead) and write to tmp file always (instead of using stdin)
+
 ## Testing
 - [x] Very very long file
