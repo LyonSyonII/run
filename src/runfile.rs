@@ -240,8 +240,11 @@ impl<'i> Runfile<'i> {
             .map_err(|e| f!("Command execution failed: {}", e).into())
         } else if let Some(sub) = self.subcommands.get(first) {
             sub.run(parents.append(first), args.get(1..).unwrap_or_default())
-        }
-        else if self.commands.get("default").is_some_and(|d| d.args().is_empty()) {
+        } else if self
+            .commands
+            .get("default")
+            .is_some_and(|d| d.args().is_empty())
+        {
             self.print_help(
                 f!("Error: Could not find command or subcommand '{}'", first)
                     .bright_red()

@@ -1,5 +1,5 @@
-use std::io::Write;
 use crate::strlist::Str;
+use std::io::Write;
 
 const BINARY: &str = "python";
 

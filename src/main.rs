@@ -105,6 +105,10 @@ fn print_help() {
         "--print-complete".bright_cyan().bold()
     );
     println!(
+        "      {}\t\tEnables reading the runfile from stdin",
+        "--stdin".bright_cyan().bold()
+    );
+    println!(
         "  {}, {}\t\tPrints help information",
         "-h".bright_cyan().bold(),
         "--help".bright_cyan().bold()
@@ -129,11 +133,14 @@ fn print_errors(
 }
 
 fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
-    if let Some(file) = read_pipe::read_pipe() {
+    let first = args.first();
+
+    if let (Some(file), Some("--stdin")) = (read_pipe::read_pipe(), first.map(|s| s.as_str())) {
+        // Remove --stdin from args
+        args.remove(0);
         return ("stdin".into(), file);
     }
-
-    let first = args.first();
+    
     if first.is_some_and_oneof(["-f", "--file"]) {
         let file = args.get(1);
         if let Some(file) = file {
