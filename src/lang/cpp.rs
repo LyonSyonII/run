@@ -60,14 +60,7 @@ fn create_project(input: &str) -> Result<(), Str<'static>> {
         return Err("Could not create project directory".into());
     };
 
-    let Ok(_) = std::env::set_current_dir(&path) else {
-        return Err(format!("Could not set current directory to {path:?}").into());
-    };
-
-    let mut main = std::fs::File::create("main.cpp")
-        .map_err(|e| format!("Could not create main.cpp\nComplete error: {e}"))?;
-
-    main.write_all(input.as_bytes())
+    std::fs::write(path.join("main.cpp"), input)
         .map_err(|e| format!("Could not write input to main.cpp\nComplete error: {e}"))?;
 
     Ok(())
