@@ -9,14 +9,14 @@ use crate::{
         strlist::{StrList, StrListSlice},
         Str,
     },
-    lang::Language,
+    lang::Lang,
 };
 
 #[derive(Eq, Clone)]
 pub struct Command<'i> {
     name: &'i str,
     doc: String,
-    lang: Language,
+    lang: Lang,
     args: Vec<&'i str>,
     script: &'i str,
 }
@@ -26,7 +26,7 @@ impl<'i> Command<'i> {
     pub fn new(
         name: &'i str,
         doc: String,
-        lang: Language,
+        lang: Lang,
         args: Vec<&'i str>,
         script: &'i str,
     ) -> Self {
@@ -43,7 +43,7 @@ impl<'i> Command<'i> {
         self.name
     }
 
-    pub fn lang(&self) -> Language {
+    pub fn lang(&self) -> Lang {
         self.lang
     }
 

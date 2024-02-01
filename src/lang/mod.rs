@@ -10,8 +10,10 @@ use yansi::Paint as _;
 
 use crate::fmt::Str;
 
+// TODO: Use enum_dispatch or something similar to avoid boilerplate
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
-pub enum Language {
+pub enum Lang {
     #[default]
     Shell,
     Bash,
@@ -22,40 +24,28 @@ pub enum Language {
     Cpp,
 }
 
-impl Language {
+impl Lang {
     pub fn as_str(self) -> &'static str {
-        match self {
-            Self::Shell => "sh",
-            Self::Bash => "bash",
-            Self::Rust => "rs",
-            Self::Python => "py",
-            Self::Javascript => "js",
-            Self::C => "c",
-            Self::Cpp => "c++",
-        }
+        self.as_language().as_str()
     }
 
     pub fn execute(self, input: &str) -> Result<(), Str<'_>> {
-        match self {
-            Language::Shell => shell::execute(input),
-            Language::Bash => bash::execute(input),
-            Language::Rust => rust::execute(input),
-            Language::C => c::execute(input),
-            Language::Cpp => cpp::execute(input),
-            Language::Python => python::execute(input),
-            Language::Javascript => javascript::execute(input),
-        }
+        self.as_language().execute(input)
     }
 
     pub fn installed(self) -> bool {
-        crate::nix::is_nix() || match self {
-            Language::Shell => shell::installed(),
-            Language::Bash => bash::installed(),
-            Language::Rust => rust::installed(),
-            Language::C => c::installed(),
-            Language::Cpp => cpp::installed(),
-            Language::Python => python::installed(),
-            Language::Javascript => javascript::installed(),
+        crate::nix::is_nix() || self.as_language().installed()
+    }
+
+    pub fn as_language(self) -> &'static dyn Language {
+        match self {
+            Lang::Shell => shell::Shell,
+            Lang::Bash => bash::Bash,
+            Lang::Rust => rust::Rust,
+            Lang::C => c::C,
+            Lang::Cpp => cpp::Cpp,
+            Lang::Python => &python::Python,
+            Lang::Javascript => &javascript::Javascript,
         }
     }
 }
@@ -82,7 +72,7 @@ pub(crate) fn execution_failed(exe: &str, error: impl std::fmt::Display) -> Str<
     Str::from(error)
 }
 
-impl std::str::FromStr for Language {
+impl std::str::FromStr for Lang {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
@@ -98,8 +88,15 @@ impl std::str::FromStr for Language {
     }
 }
 
-impl std::fmt::Display for Language {
+impl std::fmt::Display for Lang {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(self.as_str())
     }
+}
+
+trait Language {
+    fn execute(&self, input: &str) -> Result<(), Str<'_>>;
+    fn installed(&self) -> bool;
+    fn program(&self) -> Result<std::process::Command, Str<'_>>;
+    fn as_str(&self) -> &'static str;
 }
