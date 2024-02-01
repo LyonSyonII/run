@@ -36,7 +36,7 @@ impl super::Language for Rust {
 
         let compile = self
             .program()?
-            .arg("build")
+            .args(["build", "--color", "always"])
             .output()
             .map_err(|error| super::execution_failed(BINARY, error))?;
         

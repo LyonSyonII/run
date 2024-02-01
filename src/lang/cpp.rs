@@ -72,5 +72,8 @@ fn create_project(input: &str) -> Result<(), Str<'static>> {
     std::fs::write(path.join("main.cpp"), input)
         .map_err(|e| format!("Could not write input to main.cpp\nComplete error: {e}"))?;
 
+    std::env::set_current_dir(&path)
+        .map_err(|e| format!("Could not set current directory to {path:?}\nComplete error: {e}"))?;
+
     Ok(())
 }

@@ -79,6 +79,7 @@ impl<'i> Runfile<'i> {
         }
 
         writeln!(to, "{}", "Commands:".bright_green().bold()).map_err(op)?;
+        let is_nix = crate::nix::is_nix();
         let mut warnings = Vec::new();
         let (lang_indent, name_indent) = indent;
         for cmd in self.commands.values() {
@@ -87,7 +88,8 @@ impl<'i> Runfile<'i> {
 
             let first = lines.next().unwrap();
             let lang = cmd.lang();
-            let color = if lang.installed() {
+            // if nix is installed all languages are installed
+            let color = if lang.installed() || is_nix {
                 Color::Cyan
             } else {
                 warnings.push(lang);
