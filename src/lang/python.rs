@@ -1,4 +1,4 @@
-use crate::strlist::Str;
+use crate::fmt::Str;
 use std::io::Write;
 
 const BINARY: &str = "python";

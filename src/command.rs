@@ -1,11 +1,12 @@
 pub use std::format as fmt;
 use std::io::Write;
 
-use colored::{Color, Colorize as _};
+// use colored::{Color, Colorize as _};
+use yansi::{Color, Paint as _};
 
 use crate::{
     lang::Language,
-    strlist::{Str, StrList, StrListSlice},
+    fmt::{Str, strlist::{StrList, StrListSlice}},
 };
 
 #[derive(Eq, Clone)]
@@ -50,17 +51,17 @@ impl<'i> Command<'i> {
     // Clippy does not detect the usage in the 'format!' macro
     #[allow(unused_variables)]
     pub fn usage(&self, parents: StrListSlice, color: Color, newlines: usize) -> String {
-        let usage = "Usage:".color(color).bold();
-        let parents = parents.color(Color::BrightCyan).bold();
+        let usage = "Usage:".paint(color).bold();
+        let parents = parents.bright_cyan().bold();
         let name = self.name.bright_cyan().bold();
         let args = self
             .args
             .iter()
             .fold(String::new(), |acc, a| {
                 acc + "<" + &a.to_uppercase() + ">" + " "
-            })
-            .cyan();
-        if name.contains("default") {
+            });
+        let args = args.cyan();
+        if name.value == "default" {
             return format!("{usage} {parents} {args}{}", "\n".repeat(newlines));
         }
         format!("{}{usage} {parents} {name} {args}", "\n".repeat(newlines))
@@ -71,14 +72,8 @@ impl<'i> Command<'i> {
     }
 
     pub fn doc(&'i self, parents: StrListSlice) -> StrList<'i> {
-        let lines = StrList::from(("\n", self.doc.lines()));
-        let last = lines.last().unwrap_or_default();
-        if !last.starts_with("Usage:") {
-            let usage = self.usage(parents, Color::White, 0);
-            lines.append(usage)
-        } else {
-            lines
-        }
+        let usage = self.usage(parents, Color::White, 0);
+        StrList::from(("\n", std::iter::once(usage))).extend(self.doc.lines())
     }
 
     pub fn print_help(
@@ -124,15 +119,8 @@ impl<'i> Command<'i> {
         }
 
         if args.len() < self.args.len() {
-            let error = format!(
-                "{parents} {name}: Expected arguments {:?}, got {:?}",
-                self.args, args
-            )
-            .bright_red()
-            .bold();
-            eprintln!("{error}");
-            let help = format!("{parents} {name} --help").bold().bright_cyan();
-            eprintln!("See '{help}' for more information");
+            eprintln!("{}{parents} {name}: Expected arguments {:?}, got {:?}{}", "".bright_red().bold().linger(), self.args, args, "".clear());
+            eprintln!("See '{}{parents} {name} --help{}' for more information", "".bright_cyan().bold(), "".clear());
             std::process::exit(1);
         }
 
@@ -151,7 +139,7 @@ impl<'i> Command<'i> {
             eprintln!(
                 "{} {} {}{}\n",
                 "Error running".bright_red().bold(),
-                parents.color(Color::BrightRed).bold(),
+                parents.bright_red().bold(),
                 name.bright_red().bold(),
                 ":".bright_red().bold()
             );

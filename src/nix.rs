@@ -1,4 +1,4 @@
-use colored::Colorize;
+use yansi::Paint as _;
 use std::path::Path;
 
 pub fn is_nix() -> bool {
@@ -27,12 +27,12 @@ pub fn nix_shell(
 ) -> Option<std::process::Command> {
     let packages = packages.as_ref();
     let nix = get_nix()?;
-
+    
     if is_flakes(&nix) {
         eprintln!(
             "{}",
             "Using flakes (could take a while if it's the first time):"
-                .dimmed()
+                .dim()
                 .bright_black()
         );
         let mut cmd = std::process::Command::new(nix);
@@ -44,7 +44,7 @@ pub fn nix_shell(
     } else {
         eprintln!(
             "{}",
-            "Using nix-shell (could take a while if it's the first time):".dimmed()
+            "Using nix-shell (could take a while if it's the first time):".dim()
         );
         let mut cmd = std::process::Command::new(get_nix_shell()?);
         cmd.arg("--packages")

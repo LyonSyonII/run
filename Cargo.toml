@@ -18,14 +18,14 @@ path = "src/main.rs"
 [dependencies]
 peg = "0.8.2"                                                                   # Parser generator
 ariadne = "0.4.0"                                                               # Better parser error reports
-colored = "2.1.0"                                                               # Colorize output
+yansi = { version = "1.0.0-rc.1", features = ["detect-tty", "detect-env"] }     # Colorize output (no alloc)
 aho-corasick = "1.1.2"                                                          # Fast string replace (used in variable replacement)
 beef = { version = "0.5.2", features = ["const_fn"] }                           # Slimmer Cow<str>
 read_pipe = "0.1.2"                                                             # Detect if runfile is being piped into
 clap_complete = { version = "4.4.9" }                                           # Generate completions for CLI
 clap = { version = "4.4.18", default-features = false, features = ["string"] }  # Needed for clap_complete
 which = "6.0.0"                                                                 # Find executables in PATH
-indexmap = { version = "2.1.0" }                                                # Keep order of commands as written in runfile
+indexmap = { version = "2.2.2" }                                                # Keep order of commands as written in runfile
 xxhash-rust = { version = "0.8.8", features = ["xxh3"] }                        # Faster hashing for hashmap
 md5 = "0.7.0"                                                                   # Hash scripts for caching                           
 app_dirs2 = "2.5.5"                                                             # Cross-platform app dirs for compilation cache

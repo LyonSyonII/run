@@ -1,6 +1,6 @@
 use std::env::temp_dir;
 
-use crate::strlist::Str;
+use crate::fmt::Str;
 
 const BINARY: &str = "sh";
 

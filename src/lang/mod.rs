@@ -6,9 +6,9 @@ mod python;
 mod rust;
 mod shell;
 
-use colored::Colorize as _;
+use yansi::Paint as _;
 
-use crate::strlist::Str;
+use crate::fmt::Str;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum Language {
@@ -61,23 +61,17 @@ impl Language {
 }
 
 pub(crate) fn exe_not_found(exe: &str, error: which::Error) -> Str<'_> {
-    let exe = format!("'{}'", exe).bright_purple().bold();
-    Str::from(format!(
-        "{exe} {}{}{}\n\nComplete error: {error}",
-        "executable could not be found.\nDo you have it installed and in the PATH?\n\nRun '"
-            .bright_purple()
-            .bold(),
-        "run --commands".bright_cyan().bold(),
-        "' for more information.".bright_purple().bold(),
-    ))
+    let purple = yansi::Color::BrightMagenta.bold();
+    let not_found = "executable could not be found.\nDo you have it installed and in the PATH?\n\nRun '";
+    let run = "run --commands".bright_cyan().bold();
+    let for_more = "' for more information.".paint(purple);
+    let error = format!("{}'{exe}' {not_found}{run}{for_more}\n\nComplete error: {error}", "".paint(purple).linger());
+    Str::from(error)
 }
 
 pub(crate) fn execution_failed(exe: &str, error: impl std::fmt::Display) -> Str<'_> {
-    let exe = format!("'{}'", exe).bright_purple().bold();
-    Str::from(format!(
-        "{exe} {}\n\nComplete error: {error}",
-        "failed to execute command".bright_purple().bold()
-    ))
+    let error = format!("{}'{exe}' failed to execute command{}\n\nComplete error: {error}", "".bright_magenta().bold().linger(), "".clear());
+    Str::from(error)
 }
 
 impl std::str::FromStr for Language {
@@ -93,5 +87,11 @@ impl std::str::FromStr for Language {
             "js" | "javascript" => Ok(Self::Javascript),
             _ => Err(s.to_owned()),
         }
+    }
+}
+
+impl std::fmt::Display for Language {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.as_str())
     }
 }

@@ -3,7 +3,7 @@ use crate::error::Error;
 use crate::lang::Language;
 
 use crate::runfile::Runfile;
-use crate::strlist::Str;
+use crate::fmt::Str;
 pub use runfile::runfile;
 
 use crate::HashMap;

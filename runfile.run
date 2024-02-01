@@ -1,6 +1,6 @@
-/// The default command gets executed when the program is called without arguments
+/// The default command gets executed when the runfile is called without arguments
 cmd default() {
-  # 'doc' is a special variable that contains the whole documentation of the program
+  # 'doc' is a special variable that contains the whole documentation of the runfile
   echo -n "$doc";
 }
 
@@ -13,6 +13,7 @@ const constant_with_spaces = Constantinople is a nice city, I'd like to visit it
 const whitespace = "  \t  "
 // Use '$(...)' to evaluate a math expression
 const math = $(1 + 2 * 3 / 4)
+
 /// Command that uses constants
 cmd constants() {
   echo constant = $constant;
