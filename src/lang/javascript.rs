@@ -5,7 +5,7 @@ use crate::fmt::Str;
 const BINARY: &str = "node";
 
 pub(crate) fn installed() -> bool {
-    which::which(BINARY).is_ok() || crate::nix::is_nix()
+    which::which(BINARY).is_ok()
 }
 
 pub(crate) fn program() -> Result<std::process::Command, Str<'static>> {

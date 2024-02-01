@@ -48,7 +48,7 @@ impl Language {
     }
 
     pub fn installed(self) -> bool {
-        match self {
+        crate::nix::is_nix() || match self {
             Language::Shell => shell::installed(),
             Language::Bash => bash::installed(),
             Language::Rust => rust::installed(),
