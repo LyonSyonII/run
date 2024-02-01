@@ -9,6 +9,7 @@ use crate::fmt::{
     strlist::{StrList, StrListSlice},
     Str,
 };
+use crate::lang::Language as _;
 use crate::utils::OptionExt;
 use crate::HashMap;
 

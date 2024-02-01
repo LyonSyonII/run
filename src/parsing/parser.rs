@@ -29,7 +29,7 @@ peg::parser! {
         pub rule language() -> Result<Lang, Error> = start:pos() i:$([^' '|'\n'|'\t'|'\r'|'('|')'|'{'|'}'|'['|']']+) end:pos() __ ("fn"/"cmd")? {
             i.parse().map_err(|e| Error::PParseLang(e, start, end))
         } / ("fn"/"cmd") {
-            Ok(Lang::Shell)
+            Ok(crate::lang::Shell.into())
         } / start:pos() end:pos() {
             Error::PExpectedLangOrCmd(start, end).err()
         }
@@ -65,7 +65,7 @@ peg::parser! {
                 }
             }
 
-            let lang = unwrap(lang, Lang::Shell, &mut errors);
+            let lang = unwrap(lang, crate::lang::Shell.into(), &mut errors);
             let name = unwrap(name, "", &mut errors);
             let args = unwrap(args, Vec::new(), &mut errors);
             // unwrap(count, 0, &mut errors);

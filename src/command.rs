@@ -9,7 +9,7 @@ use crate::{
         strlist::{StrList, StrListSlice},
         Str,
     },
-    lang::Lang,
+    lang::{Lang, Language},
 };
 
 #[derive(Eq, Clone)]

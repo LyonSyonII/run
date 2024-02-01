@@ -9,11 +9,10 @@ type End = usize;
 type Name = String;
 
 /// Errors starting with 'P' are parsing errors.
-/// 
+///
 /// Errors starting with 'R' are run errors.
 #[allow(dead_code)]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
-#[derive(thiserror::Error)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Default, thiserror::Error)]
 pub enum Error {
     #[error("Unknown language '{0}'; expected one of [cmd, fn, sh, shell, bash, rs, rust, py, python, js, javascript]")]
     PParseLang(String, Start, End),
@@ -66,11 +65,18 @@ impl Error {
     ) -> std::io::Result<()> {
         let msg = self.to_string();
         let (start, end) = self.span();
-        
+
         Self::ariadne_with_msg(msg, start, end, file, input, color)
     }
     /// Prints the specified message to stderr with ariadne.
-    pub fn ariadne_with_msg(msg: impl std::fmt::Display, start: usize, end: usize, file: impl AsRef<str>, input: impl AsRef<str>, color: ariadne::Color) -> std::io::Result<()> {
+    pub fn ariadne_with_msg(
+        msg: impl std::fmt::Display,
+        start: usize,
+        end: usize,
+        file: impl AsRef<str>,
+        input: impl AsRef<str>,
+        color: ariadne::Color,
+    ) -> std::io::Result<()> {
         let file = file.as_ref();
         let input = input.as_ref();
         let msg = msg.to_string();

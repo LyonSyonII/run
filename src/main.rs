@@ -58,7 +58,14 @@ fn main() -> std::io::Result<()> {
         },
         Err(e) => {
             let start = e.location.offset;
-            Error::ariadne_with_msg(format_args!("Expected {}", e.expected), start, start, file, &input, Color::Magenta)?;
+            Error::ariadne_with_msg(
+                format_args!("Expected {}", e.expected),
+                start,
+                start,
+                file,
+                &input,
+                Color::Magenta,
+            )?;
             std::process::exit(1);
         }
     };
