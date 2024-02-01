@@ -2,8 +2,8 @@ use crate::command::Command;
 use crate::error::Error;
 use crate::lang::Language;
 
-use crate::runfile::Runfile;
 use crate::fmt::Str;
+use crate::runfile::Runfile;
 pub use runfile::runfile;
 
 use crate::HashMap;

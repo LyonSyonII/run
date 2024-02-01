@@ -91,9 +91,7 @@ impl<'a> StrList<'a> {
 #[allow(dead_code)]
 impl<'a> StrListSlice<'a> {
     fn new(elements: &'a [Str<'a>]) -> Self {
-        Self {
-            elements,
-        }
+        Self { elements }
     }
 
     pub fn first(&'a self) -> Option<&'a str> {
@@ -171,7 +169,10 @@ impl<'a> IntoIterator for StrListSlice<'a> {
     }
 }
 
-impl<'a, S> std::iter::Extend<S> for StrList<'a> where S: Into<Str<'a>> {
+impl<'a, S> std::iter::Extend<S> for StrList<'a>
+where
+    S: Into<Str<'a>>,
+{
     fn extend<T: IntoIterator<Item = S>>(&mut self, iter: T) {
         let iter = iter.into_iter().map(|s| s.into());
         self.elements.extend(iter);

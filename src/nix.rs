@@ -1,5 +1,5 @@
-use yansi::Paint as _;
 use std::path::Path;
+use yansi::Paint as _;
 
 pub fn is_nix() -> bool {
     get_nix().is_some()
@@ -27,7 +27,7 @@ pub fn nix_shell(
 ) -> Option<std::process::Command> {
     let packages = packages.as_ref();
     let nix = get_nix()?;
-    
+
     if is_flakes(&nix) {
         eprintln!(
             "{}",

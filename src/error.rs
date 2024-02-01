@@ -6,6 +6,9 @@ type Start = usize;
 type End = usize;
 type Name = String;
 
+/// Errors starting with 'P' are parsing errors.
+/// 
+/// Errors starting with 'R' are run errors.
 #[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Default)]
 pub enum Error {
@@ -29,14 +32,13 @@ pub enum Error {
 
 impl Error {
     pub fn ariadne(
-        msg: impl Into<String>,
+        msg: impl std::fmt::Display,
         start: usize,
         end: usize,
         file: impl AsRef<str>,
         input: impl AsRef<str>,
         color: ariadne::Color,
     ) -> std::io::Result<()> {
-        let msg = msg.into();
         let file = file.as_ref();
         let input = input.as_ref();
 
@@ -54,24 +56,26 @@ impl Error {
     }
 
     pub fn eprint(&self, file: &str, input: &str, color: ariadne::Color) -> std::io::Result<()> {
-        use format as f;
-        let ariadne = |msg: &str, start: &usize, end: &usize| {
-            Self::ariadne(msg, *start, *end, file, input, color)
-        };
-
+        use format_args as f;
+        macro_rules! ariadne(
+            ($msg:expr, $start:expr, $end:expr) => {
+                Self::ariadne($msg, *$start, *$end, file, input, color)
+            }
+        );
+        
         match self {
             Error::Unknown => eprintln!("Unknown error, please report this issue on {}", REPO),
-            Error::PExpectedLangOrCmd(start, end) => ariadne("Expected language or fn/cmd", start, end)?,
-            Error::PExpectedCmdName(start, end) => ariadne("Expected command name", start, end)?,
-            Error::PParseLang(s, start, end) => ariadne(&f!("Unknown language '{s}'; expected one of [cmd, fn, sh, shell, bash, rs, rust, py, python, js, javascript]"), start, end)?,
-            Error::PExpectedArgs(start, end) => ariadne("Expected '(args)' or empty parentheses '()' after command name", start, end)?,
-            Error::PExpectedOpenParen(start, end) => ariadne("Expected open parentheses '('", start, end)?,
-            Error::PExpectedCloseParen(start, end) => ariadne("Expected close parentheses ')'", start, end)?,
-            Error::PExpectedBodyStart(start, end) => ariadne("Expected command body start '{'", start, end)?,
-            Error::PExpectedBodyEnd(count, start, end) => ariadne(&f!("Expected command body end '{}'", "}".repeat(*count)), start, end)?,
-            Error::PIncludeRead(e, name, start, end) => ariadne(&f!("Failed to read included file '{name}': {e}"), start, end)?,
-            Error::PIncludeParse(e, name, start, end) => ariadne(&f!("Failed to parse included file '{name}': {e}"), start, end)?,
-            Error::PMathExpression(start, end) => ariadne("Failed to parse math expression", start, end)?,
+            Error::PExpectedLangOrCmd(start, end) => ariadne!("Expected language or fn/cmd", start, end)?,
+            Error::PExpectedCmdName(start, end) => ariadne!("Expected command name", start, end)?,
+            Error::PParseLang(s, start, end) => ariadne!(f!("Unknown language '{s}'; expected one of [cmd, fn, sh, shell, bash, rs, rust, py, python, js, javascript]"), start, end)?,
+            Error::PExpectedArgs(start, end) => ariadne!("Expected '(args)' or empty parentheses '()' after command name", start, end)?,
+            Error::PExpectedOpenParen(start, end) => ariadne!("Expected open parentheses '('", start, end)?,
+            Error::PExpectedCloseParen(start, end) => ariadne!("Expected close parentheses ')'", start, end)?,
+            Error::PExpectedBodyStart(start, end) => ariadne!("Expected command body start '{'", start, end)?,
+            Error::PExpectedBodyEnd(count, start, end) => ariadne!(f!("Expected command body end '{}'", "}".repeat(*count)), start, end)?,
+            Error::PIncludeRead(e, name, start, end) => ariadne!(f!("Failed to read included file '{name}': {e}"), start, end)?,
+            Error::PIncludeParse(e, name, start, end) => ariadne!(f!("Failed to parse included file '{name}': {e}"), start, end)?,
+            Error::PMathExpression(start, end) => ariadne!("Failed to parse math expression", start, end)?,
         }
 
         Ok(())

@@ -62,15 +62,23 @@ impl Language {
 
 pub(crate) fn exe_not_found(exe: &str, error: which::Error) -> Str<'_> {
     let purple = yansi::Color::BrightMagenta.bold();
-    let not_found = "executable could not be found.\nDo you have it installed and in the PATH?\n\nRun '";
+    let not_found =
+        "executable could not be found.\nDo you have it installed and in the PATH?\n\nRun '";
     let run = "run --commands".bright_cyan().bold();
     let for_more = "' for more information.".paint(purple);
-    let error = format!("{}'{exe}' {not_found}{run}{for_more}\n\nComplete error: {error}", "".paint(purple).linger());
+    let error = format!(
+        "{}'{exe}' {not_found}{run}{for_more}\n\nComplete error: {error}",
+        "".paint(purple).linger()
+    );
     Str::from(error)
 }
 
 pub(crate) fn execution_failed(exe: &str, error: impl std::fmt::Display) -> Str<'_> {
-    let error = format!("{}'{exe}' failed to execute command{}\n\nComplete error: {error}", "".bright_magenta().bold().linger(), "".clear());
+    let error = format!(
+        "{}'{exe}' failed to execute command{}\n\nComplete error: {error}",
+        "".bright_magenta().bold().linger(),
+        "".clear()
+    );
     Str::from(error)
 }
 

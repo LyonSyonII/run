@@ -10,11 +10,11 @@ pub type HashMap<K, V> = indexmap::IndexMap<K, V, xxhash_rust::xxh3::Xxh3Builder
 mod clap;
 mod command;
 mod error;
+mod fmt;
 mod lang;
 mod nix;
 mod parsing;
 mod runfile;
-mod fmt;
 mod utils;
 
 fn main() -> std::io::Result<()> {

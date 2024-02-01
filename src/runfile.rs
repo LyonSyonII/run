@@ -5,7 +5,10 @@ use std::io::Write as _;
 use yansi::{Color, Paint};
 
 use crate::command::Command;
-use crate::fmt::{Str, strlist::{StrList, StrListSlice}};
+use crate::fmt::{
+    strlist::{StrList, StrListSlice},
+    Str,
+};
 use crate::utils::OptionExt;
 use crate::HashMap;
 
@@ -52,7 +55,7 @@ impl<'i> Runfile<'i> {
             // Subcommand
             (Some(name.bright_cyan().bold()), "Usage:".bold())
         };
-        
+
         let usage = if let Some(name) = name {
             f!("{usage} {parents} {name} {}", "[COMMAND] [ARGS...]".cyan())
         } else {
@@ -83,18 +86,19 @@ impl<'i> Runfile<'i> {
 
             let first = lines.next().unwrap();
             let lang = cmd.lang();
-            let color = 
-                if lang.installed() {
-                    Color::Cyan
-                } else {
-                    warnings.push(lang);
-                    Color::BrightYellow
-                };
+            let color = if lang.installed() {
+                Color::Cyan
+            } else {
+                warnings.push(lang);
+                Color::BrightYellow
+            };
             let name = cmd.name().bright_cyan().bold();
-            writeln!(to,
-                " {lang:<lang_indent$} {name:<name_indent$} {first}", 
-                lang=format!("<{lang}>").paint(color)
-            ).map_err(op)?;
+            writeln!(
+                to,
+                " {lang:<lang_indent$} {name:<name_indent$} {first}",
+                lang = format!("<{lang}>").paint(color)
+            )
+            .map_err(op)?;
             for l in lines {
                 writeln!(to, " {:lang_indent$} {:name_indent$} {}", "", "", l).map_err(op)?;
             }
@@ -150,7 +154,7 @@ impl<'i> Runfile<'i> {
 
     fn print_help(
         &self,
-        msg: impl AsRef<str>,
+        msg: Option<impl std::fmt::Display>,
         parents: StrListSlice,
         to: &mut (impl std::io::Write + ?Sized),
     ) -> Result<(), Str<'_>> {
@@ -159,8 +163,8 @@ impl<'i> Runfile<'i> {
 
         let indent = self.calculate_indent();
 
-        if !msg.is_empty() {
-            writeln!(to, "{}", msg).map_err(op)?;
+        if let Some(msg) = msg {
+            writeln!(to, "{msg}").map_err(op)?;
         }
         writeln!(to, "{}", self.doc("", parents)).map_err(op)?;
         if !self.commands.is_empty() || !self.subcommands.is_empty() {
@@ -182,7 +186,7 @@ impl<'i> Runfile<'i> {
         let first = args.first();
         // Needed for subcommands
         if first.is_some_and_oneof(["-h", "--help"]) {
-            self.print_help("", parents.as_slice(), &mut std::io::stdout())?;
+            self.print_help(None::<&str>, parents.as_slice(), &mut std::io::stdout())?;
             return Ok(());
         }
         if first.is_some_and_oneof(["-c", "--commands"]) {
@@ -197,7 +201,7 @@ impl<'i> Runfile<'i> {
 
         let runfile_docs = || {
             let mut buf = Vec::new();
-            self.print_help("", parents.as_slice(), &mut buf)
+            self.print_help(None::<&str>, parents.as_slice(), &mut buf)
                 .unwrap_or_default();
             String::from_utf8(buf).map_err(|e| e.to_string())
         };
@@ -205,10 +209,11 @@ impl<'i> Runfile<'i> {
         let default = || {
             let Some(cmd) = self.commands.get("default") else {
                 self.print_help(
-                    "Error: No command specified and no default command found"
-                        .bright_red()
-                        .bold()
-                        .to_string(),
+                    Some(
+                        "Error: No command specified and no default command found"
+                            .bright_red()
+                            .bold(),
+                    ),
                     parents.as_slice(),
                     &mut std::io::stderr(),
                 )?;
@@ -239,9 +244,11 @@ impl<'i> Runfile<'i> {
             .is_some_and(|d| d.args().is_empty())
         {
             self.print_help(
-                f!("Error: Could not find command or subcommand '{}'", first)
-                    .bright_red()
-                    .to_string(),
+                Some(
+                    format_args!("Error: Could not find command or subcommand '{}'\n", first)
+                        .bright_red()
+                        .bold(),
+                ),
                 parents.as_slice(),
                 &mut std::io::stderr(),
             )?;

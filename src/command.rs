@@ -5,8 +5,11 @@ use std::io::Write;
 use yansi::{Color, Paint as _};
 
 use crate::{
+    fmt::{
+        strlist::{StrList, StrListSlice},
+        Str,
+    },
     lang::Language,
-    fmt::{Str, strlist::{StrList, StrListSlice}},
 };
 
 #[derive(Eq, Clone)]
@@ -54,12 +57,9 @@ impl<'i> Command<'i> {
         let usage = "Usage:".paint(color).bold();
         let parents = parents.bright_cyan().bold();
         let name = self.name.bright_cyan().bold();
-        let args = self
-            .args
-            .iter()
-            .fold(String::new(), |acc, a| {
-                acc + "<" + &a.to_uppercase() + ">" + " "
-            });
+        let args = self.args.iter().fold(String::new(), |acc, a| {
+            acc + "<" + &a.to_uppercase() + ">" + " "
+        });
         let args = args.cyan();
         if name.value == "default" {
             return format!("{usage} {parents} {args}{}", "\n".repeat(newlines));
@@ -119,8 +119,18 @@ impl<'i> Command<'i> {
         }
 
         if args.len() < self.args.len() {
-            eprintln!("{}{parents} {name}: Expected arguments {:?}, got {:?}{}", "".bright_red().bold().linger(), self.args, args, "".clear());
-            eprintln!("See '{}{parents} {name} --help{}' for more information", "".bright_cyan().bold(), "".clear());
+            eprintln!(
+                "{}{parents} {name}: Expected arguments {:?}, got {:?}{}",
+                "".bright_red().bold().linger(),
+                self.args,
+                args,
+                "".clear()
+            );
+            eprintln!(
+                "See '{}{parents} {name} --help{}' for more information",
+                "".bright_cyan().bold(),
+                "".clear()
+            );
             std::process::exit(1);
         }
 
