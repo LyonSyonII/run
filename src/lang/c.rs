@@ -24,7 +24,7 @@ impl super::Language for C {
         BINARIES.iter().any(|&binary| which::which(binary).is_ok())
     }
 
-    fn program(&self) -> Result<std::process::Command, Str<'_>> {
+    fn program(&self) -> Result<std::process::Command, Str<'static>> {
         BINARIES
             .iter()
             .find_map(|binary| which::which(binary).ok())

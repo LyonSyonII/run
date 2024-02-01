@@ -10,7 +10,7 @@ impl super::Language for Python {
         "python"
     }
     
-    fn nix_packages(&self) ->  &'static[&'static str] {
+    fn nix_packages(&self) ->  &'static [&'static str] {
         &["python3Minimal"]
     }
 }

@@ -1,6 +1,7 @@
 mod bash;
 mod c;
 mod cpp;
+mod csharp;
 mod javascript;
 mod python;
 mod rust;
@@ -9,6 +10,7 @@ mod shell;
 pub use bash::Bash;
 pub use c::C;
 pub use cpp::Cpp;
+pub use csharp::CSharp;
 pub use javascript::Javascript;
 pub use python::Python;
 pub use rust::Rust;
@@ -28,22 +30,21 @@ pub enum Lang {
     Javascript,
     C,
     Cpp,
+    CSharp,
 }
 
 #[enum_dispatch::enum_dispatch(Lang)]
 pub trait Language {
     fn as_str(&self) -> &'static str;
     fn binary(&self) -> &'static str;
-    fn nix_packages(&self) -> &'static [&'static str] {
-        &[]
-    }
+    fn nix_packages(&self) -> &'static [&'static str];
     fn execute(&self, input: &str) -> Result<(), Str<'_>> {
         execute_simple(self.program()?, input)
     }
     fn installed(&self) -> bool {
         which::which(self.binary()).is_ok()
     }
-    fn program(&self) -> Result<std::process::Command, Str<'_>> {
+    fn program(&self) -> Result<std::process::Command, Str<'static>> {
         which::which(self.binary())
             .map(std::process::Command::new)
             .map_err(|error| exe_not_found(self.binary(), error))
@@ -128,7 +129,8 @@ impl std::str::FromStr for Lang {
             "bash" => Ok(Bash.into()),
             "rs" | "rust" => Ok(Rust.into()),
             "c" => Ok(C.into()),
-            "c++" | "cpp" => Ok(Cpp.into()),
+            "c++" | "cpp" | "cplusplus" => Ok(Cpp.into()),
+            "c#" | "cs" | "csharp" => Ok(CSharp.into()),
             "py" | "python" => Ok(Python.into()),
             "js" | "javascript" => Ok(Javascript.into()),
             _ => Err(s.to_owned()),

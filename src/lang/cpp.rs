@@ -24,7 +24,7 @@ impl super::Language for Cpp {
         BINARIES.iter().any(|&binary| which::which(binary).is_ok())
     }
 
-    fn program(&self) -> Result<std::process::Command, Str<'_>> {
+    fn program(&self) -> Result<std::process::Command, Str<'static>> {
         BINARIES
             .iter()
             .find_map(|binary| which::which(binary).ok())
@@ -36,7 +36,7 @@ impl super::Language for Cpp {
             .or_else(|error| crate::nix::nix_shell(["gcc"], "g++").ok_or(error))
     }
 
-    fn execute(&self,input: &str) -> Result<(),Str<'_>> {
+    fn execute(&self, input: &str) -> Result<(), Str<'_>> {
         create_project(input)?;
     
         let compile = self.program()?
@@ -53,12 +53,12 @@ impl super::Language for Cpp {
         let child = std::process::Command::new("./main")
             .spawn()
             .map_err(|error| super::execution_failed("g++/clang", error))?;
-
+        
         super::wait_for_child(child)
     }
 }
 
-/// Creates a new Rust project in the cache directory, sets the current directory to it and writes `input` into main.rs
+/// Creates a new C++ project in the cache directory, sets the current directory to it and writes `input` into main.cpp
 fn create_project(input: &str) -> Result<(), Str<'static>> {
     let app_info = app_dirs2::AppInfo {
         name: "runfile",
@@ -68,12 +68,12 @@ fn create_project(input: &str) -> Result<(), Str<'static>> {
     let Ok(path) = app_dirs2::app_dir(app_dirs2::AppDataType::UserCache, &app_info, &path) else {
         return Err("Could not create project directory".into());
     };
-
+    
     std::fs::write(path.join("main.cpp"), input)
         .map_err(|e| format!("Could not write input to main.cpp\nComplete error: {e}"))?;
 
     std::env::set_current_dir(&path)
         .map_err(|e| format!("Could not set current directory to {path:?}\nComplete error: {e}"))?;
-
+    
     Ok(())
 }

@@ -24,7 +24,7 @@ impl super::Language for Rust {
         which::which(BINARY).and(which::which("rustc")).is_ok()
     }
 
-    fn program(&self) -> Result<std::process::Command, Str<'_>> {
+    fn program(&self) -> Result<std::process::Command, Str<'static>> {
         which::which(BINARY)
             .map(std::process::Command::new)
             .map_err(|error| super::exe_not_found(BINARY, error))

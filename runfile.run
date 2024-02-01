@@ -71,6 +71,8 @@ c cmd c(name) {
   }
 }
 
+// The same happens with C++
+/// C++ command
 c++ cmd cpp(name) {
   #include <iostream>
   int main() {
@@ -78,10 +80,8 @@ c++ cmd cpp(name) {
   }
 }
 
-// Multiple arguments are separated by spaces
-// All arguments are positional and required (at the moment)
-cmd args(name age) {
-  echo "Hello $name, you are $age years old."
+c# cmd csharp(name) {
+  Console.WriteLine("Hello $name from C#!");
 }
 
 // You can define subcommands with the 'sub' keyword

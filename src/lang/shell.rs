@@ -9,4 +9,8 @@ impl super::Language for Shell {
     fn binary(&self) -> &'static str {
         "sh"
     }
+
+    fn nix_packages(&self) ->  &'static[&'static str] {
+        &[]
+    }
 }
