@@ -29,6 +29,7 @@ indexmap = { version = "2.2.2" }                                                
 xxhash-rust = { version = "0.8.8", features = ["xxh3"] }                        # Faster hashing for hashmap
 md5 = "0.7.0"                                                                   # Hash scripts for caching                           
 app_dirs2 = "2.5.5"                                                             # Cross-platform app dirs for compilation cache
+thiserror = "1.0.56"                                                            # Better error type creation
 
 [profile.dev]
 codegen-backend = "cranelift"

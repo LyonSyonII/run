@@ -329,6 +329,7 @@ dependencies = [
  "md5",
  "peg",
  "read_pipe",
+ "thiserror",
  "which",
  "xxhash-rust",
  "yansi 1.0.0-rc.1",

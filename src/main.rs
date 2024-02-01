@@ -58,8 +58,7 @@ fn main() -> std::io::Result<()> {
         },
         Err(e) => {
             let start = e.location.offset;
-            let msg = format!("Expected {}", e.expected);
-            Error::ariadne(msg, start, start, file, &input, Color::Magenta)?;
+            Error::ariadne_with_msg(format_args!("Expected {}", e.expected), start, start, file, &input, Color::Magenta)?;
             std::process::exit(1);
         }
     };
@@ -128,7 +127,7 @@ fn print_errors(
     let mut colors = ColorGenerator::new();
 
     for e in errors {
-        e.eprint(file, input, colors.next())?;
+        e.ariadne(file, input, colors.next())?;
     }
 
     Ok(())
