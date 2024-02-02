@@ -19,8 +19,8 @@ ariadne = "0.4.0"                                                               
 yansi = { version = "1.0.0-rc.1", features = ["detect-tty", "detect-env"] }     # Colorize output (no alloc)
 aho-corasick = "1.1.2"                                                          # Fast string replace (used in variable replacement)
 beef = { version = "0.5.2" }                                                    # Slimmer Cow<str>
-read_pipe = "0.1.2"                                                             # Detect if runfile is being piped into
-clap_complete = { version = "4.4.10" }                                           # Generate completions for CLI
+read_pipe = "0.2.0"                                                             # Detect if runfile is being piped into
+clap_complete = { version = "4.4.10" }                                          # Generate completions for CLI
 clap = { version = "4.4.18", default-features = false, features = ["string"] }  # Needed for clap_complete
 which = "6.0.0"                                                                 # Find executables in PATH
 indexmap = { version = "2.2.2" }                                                # Keep order of commands as written in runfile
