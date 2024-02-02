@@ -49,4 +49,4 @@ You can install `run` with `cargo`:
 cargo install runfile
 ```
 
-Or download the binary from the [releases page]()
+Or download the latest installer from the [releases page]()
