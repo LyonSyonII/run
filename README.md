@@ -43,10 +43,28 @@ And, if you have [`nix`](https://nixos.org/) installed, `run` will fetch the nec
 If you want a language to be added, please open an issue or a pull request!
 
 ## Installation
-You can install `run` with `cargo`:
+Download the latest installer from the [releases page](https://github.com/LyonSyonII/run/releases).
+
+Or compile it yourself with `cargo`:
 
 ```sh
 cargo install runfile
 ```
 
-Or download the latest installer from the [releases page]()
+## Usage
+> `runfile` is to `run` what `makefile` is to `make`
+
+Create a `runfile` wherever you want, and write your commands in it.  
+Then, run `run` in the same directory as the `runfile` to execute the commands.
+
+The possible names for the `runfile` are: `run`, `runfile` or any file with the `.run` extension.
+
+If you want to see the available commands run `run --commands`, or `run --help` for more information.
+
+### How to write a `runfile`
+![Example](assets/example.png)
+
+See the `runfile` in the screenshot [here](runfile.run).
+
+## License
+This project is licensed under the [GPL-3.0](LICENSE) license.
