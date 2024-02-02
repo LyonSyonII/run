@@ -32,27 +32,15 @@ impl super::Language for Rust {
     }
 
     fn execute(&self, input: &str) -> Result<(), Str<'_>> {
-        create_project(self.program()?, input)?;
-
-        let compile = self
-            .program()?
-            .args(["build", "--color", "always"])
-            .output()
-            .map_err(|error| super::execution_failed(BINARY, error))?;
-
-        if !compile.status.success() {
-            let err = String::from_utf8(compile.stderr)
-                .map_err(|_| "Failed to parse command output as UTF-8")?;
-            return Err(Str::from(err));
-        }
-
-        let child = self
-            .program()?
-            .args(["run", "-q"])
-            .spawn()
-            .map_err(|error| super::execution_failed(BINARY, error))?;
-
-        super::wait_for_child(child)
+        let input = format!("fn main() {{\n{}\n}}", input);
+        super::execute_compiled(
+            "rust",
+            "src/main.rs",
+            &input,
+            Some(self.program()?.args(["init", "--name", "runfile"])),
+            self.program()?.args(["build", "--color", "always"]),
+            self.program()?.args(["run", "-q"]),
+        )
     }
 }
 

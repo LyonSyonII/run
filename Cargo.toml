@@ -34,6 +34,8 @@ enum_dispatch = "0.3.12"
 
 [profile.dev]
 codegen-backend = "cranelift"
+debug = false
+strip = true
 
 [profile.release]
 opt-level = 3       # Optimize for size.

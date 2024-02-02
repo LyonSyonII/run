@@ -147,11 +147,11 @@ impl<'i> Command<'i> {
         // Run the script
         if let Err(e) = self.lang.execute(&script) {
             eprintln!(
-                "{} {} {}{}\n",
-                "Error running".bright_red().bold(),
-                parents.bright_red().bold(),
-                name.bright_red().bold(),
-                ":".bright_red().bold()
+                "{}{} {}{}\n",
+                "Error running '".bright_red().bold(),
+                parents.magenta().bold(),
+                name.magenta().bold(),
+                "':".bright_red().bold()
             );
             eprintln!("{e}");
         }

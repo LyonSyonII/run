@@ -23,10 +23,13 @@ pub fn is_flakes(nix: &Path) -> bool {
 
 pub fn is_in_store(packages: impl AsRef<[&'static str]>) -> bool {
     let mut packages = packages.as_ref().to_vec();
-    for package in std::fs::read_dir("/nix/store").expect("Could not read /nix/store").flatten() {
+    for package in std::fs::read_dir("/nix/store")
+        .expect("Could not read /nix/store")
+        .flatten()
+    {
         let name = package.file_name();
         packages.retain(|p| !name.to_string_lossy().contains(p));
-        
+
         if packages.is_empty() {
             return true;
         }

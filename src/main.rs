@@ -22,10 +22,12 @@ fn main() -> std::io::Result<()> {
 
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
 
-    if args.first().is_some_and_oneof(["-h", "--help"]) {
+    if args.first().is_some_and(|f| f.starts_with('-'))
+        && args.iter().any(|a| a == "-h" || a == "--help")
+    {
         print_help();
         return Ok(());
-    };
+    }
 
     if args.first().is_some_and_oneof(["--print-complete"]) {
         crate::clap::print_completion();
@@ -39,11 +41,12 @@ fn main() -> std::io::Result<()> {
     } else {
         std::path::Path::new(file.as_ref())
             .parent()
-            .map(|mut p| {
+            .map(|p| {
                 if p == std::path::Path::new("") {
-                    p = dot
+                    dot
+                } else {
+                    p
                 }
-                p
             })
             .unwrap_or(dot)
     };
