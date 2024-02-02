@@ -66,5 +66,13 @@ If you want to see the available commands run `run --commands`, or `run --help` 
 
 See the `runfile` in the screenshot [here](runfile.run).
 
+## VSCode Extension
+There's a [VSCode extension](https://marketplace.visualstudio.com/items?itemName=LyonSyonII.runfile) that provides syntax highlighting for `runfile` scripts.
+
+It's experimental, so you'll need to install it manually.
+
+Download the latest `.vsix` file from the [releases page](
+Run `code --install-extension runfile-0.0.1.vsix` to install it.
+
 ## License
 This project is licensed under the [GPL-3.0](LICENSE) license.
