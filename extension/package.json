@@ -11,8 +11,15 @@
     "type": "github",
     "url": "https://github.com/lyonsyonii/run"
   },
-  "keywords": ["run", "runfile", "syntax", "highlight", "language", "support"],
-  "icon": "../assets/icon.png",
+  "keywords": [
+    "run",
+    "runfile",
+    "syntax",
+    "highlight",
+    "language",
+    "support"
+  ],
+  "icon": "assets/icon.png",
   "version": "0.0.1",
   "engines": {
     "vscode": "^1.85.0"
@@ -21,29 +28,44 @@
     "Programming Languages"
   ],
   "contributes": {
-    "languages": [{
-      "id": "run",
-      "icon": {
-        "light": "../assets/icon.png",
-        "dark": "../assets/icon.png"
+    "languages": [
+      {
+        "id": "run",
+        "icon": {
+          "light": "assets/icon.png",
+          "dark": "assets/icon.png"
+        },
+        "aliases": [
+          "Run",
+          "run",
+          "Runfile",
+          "runfile"
+        ],
+        "extensions": [
+          "runfile",
+          "run"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "run",
+        "scopeName": "source.run",
+        "path": "./syntaxes/run.tmLanguage.json"
       },
-      "aliases": ["Run", "run", "Runfile", "runfile"],
-      "extensions": ["runfile", "run"],
-      "configuration": "./language-configuration.json"
-    }],
-    "grammars": [{
-      "language": "run",
-      "scopeName": "source.run",
-      "path": "./syntaxes/run.tmLanguage.json"
-    }, {
-      "path": "./syntaxes/interpolation.json",
-      "scopeName": "interpolation.run",
-      "injectTo": ["source.run"]
-    }]
+      {
+        "path": "./syntaxes/interpolation.json",
+        "scopeName": "interpolation.run",
+        "injectTo": [
+          "source.run"
+        ]
+      }
+    ]
   },
   "devDependencies": {
-    "@vscode/vsce": "^2.22.0",
-    "generator-code": "^1.8.2",
+    "@vscode/vsce": "^2.23.0",
+    "generator-code": "^1.8.3",
     "yo": "^5.0.0"
   }
 }

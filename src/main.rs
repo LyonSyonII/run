@@ -1,7 +1,7 @@
 use ariadne::{Color, ColorGenerator};
-use colored::Colorize as _;
-use strlist::Str;
+use fmt::Str;
 use utils::OptionExt as _;
+use yansi::Paint as _;
 
 use crate::error::Error;
 
@@ -10,20 +10,24 @@ pub type HashMap<K, V> = indexmap::IndexMap<K, V, xxhash_rust::xxh3::Xxh3Builder
 mod clap;
 mod command;
 mod error;
+mod fmt;
 mod lang;
 mod nix;
 mod parsing;
 mod runfile;
-mod strlist;
 mod utils;
 
 fn main() -> std::io::Result<()> {
+    yansi::whenever(yansi::Condition::TTY_AND_COLOR);
+
     let mut args = std::env::args().skip(1).collect::<Vec<_>>();
 
-    if args.first().is_some_and_oneof(["-h", "--help"]) {
+    if args.first().is_some_and(|f| f.starts_with('-'))
+        && args.iter().any(|a| a == "-h" || a == "--help")
+    {
         print_help();
         return Ok(());
-    };
+    }
 
     if args.first().is_some_and_oneof(["--print-complete"]) {
         crate::clap::print_completion();
@@ -37,11 +41,12 @@ fn main() -> std::io::Result<()> {
     } else {
         std::path::Path::new(file.as_ref())
             .parent()
-            .map(|mut p| {
+            .map(|p| {
                 if p == std::path::Path::new("") {
-                    p = dot
+                    dot
+                } else {
+                    p
                 }
-                p
             })
             .unwrap_or(dot)
     };
@@ -56,8 +61,14 @@ fn main() -> std::io::Result<()> {
         },
         Err(e) => {
             let start = e.location.offset;
-            let msg = format!("Expected {}", e.expected);
-            Error::ariadne(msg, start, start, file, &input, Color::Magenta)?;
+            Error::ariadne_with_msg(
+                format_args!("Expected {}", e.expected),
+                start,
+                start,
+                file,
+                &input,
+                Color::Magenta,
+            )?;
             std::process::exit(1);
         }
     };
@@ -70,7 +81,7 @@ fn main() -> std::io::Result<()> {
 fn print_help() {
     println!(
         "{}",
-        "Run commands in the languages you love!\n".dimmed().bold()
+        "Run commands in the languages you love!\n".dim().bold()
     );
     println!("Runs a runfile in the current directory");
     println!("Possible names: [run, runfile] or any ending in '.run'\n");
@@ -105,6 +116,10 @@ fn print_help() {
         "--print-complete".bright_cyan().bold()
     );
     println!(
+        "      {}\t\tEnables reading the runfile from stdin",
+        "--stdin".bright_cyan().bold()
+    );
+    println!(
         "  {}, {}\t\tPrints help information",
         "-h".bright_cyan().bold(),
         "--help".bright_cyan().bold()
@@ -122,18 +137,21 @@ fn print_errors(
     let mut colors = ColorGenerator::new();
 
     for e in errors {
-        e.eprint(file, input, colors.next())?;
+        e.ariadne(file, input, colors.next())?;
     }
 
     Ok(())
 }
 
 fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
-    if let Some(file) = read_pipe::read_pipe() {
+    let first = args.first();
+
+    if let (Some(file), Some("--stdin")) = (read_pipe::read_pipe(), first.map(|s| s.as_str())) {
+        // Remove --stdin from args
+        args.remove(0);
         return ("stdin".into(), file);
     }
 
-    let first = args.first();
     if first.is_some_and_oneof(["-f", "--file"]) {
         let file = args.get(1);
         if let Some(file) = file {
@@ -144,10 +162,11 @@ fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
                 return (file, contents);
             }
 
-            let err = format!("Error: Could not read file '{}'", file)
-                .bright_red()
-                .bold();
-            eprintln!("{}", err);
+            eprintln!(
+                "{}Error: Could not read file '{file}'{}",
+                "".bright_red().bold().linger(),
+                "".clear()
+            );
             std::process::exit(1);
         }
 
@@ -181,9 +200,9 @@ fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
         Ok(f) => f,
         Err(e) => {
             eprintln!(
-                "{} {}",
-                "Error:".bright_red().bold(),
-                e.to_string().bright_red().bold()
+                "{}Error: {e}{}",
+                "".bright_red().bold().linger(),
+                "".clear()
             );
             std::process::exit(1);
         }
@@ -192,27 +211,25 @@ fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
     for file in files.flatten() {
         let path = file.path();
         if path.extension() == Some(std::ffi::OsStr::new("run")) {
-            let name = path
-                .file_name()
-                .map(|p| p.to_string_lossy().to_string().into());
+            let name = path.file_name().map(|p| p.to_string_lossy().to_string());
             let contents = std::fs::read_to_string(path);
 
             if let (Some(name), Ok(contents)) = (name, contents) {
-                return (name, contents);
+                return (name.into(), contents);
             }
         }
     }
     eprintln!("{}", "Error: Could not find runfile".bold().bright_red());
+    let style = yansi::Style::new().bright_magenta().bold();
     eprintln!(
         "Possible file names: [{}, {}] or any ending in {}",
-        "run".bright_purple().bold(),
-        "runfile".bright_purple().bold(),
-        ".run".bright_purple().bold()
+        "run".paint(style),
+        "runfile".paint(style),
+        ".run".paint(style)
     );
     eprintln!(
-        "See '{} {}' for more information",
-        "run".bright_cyan().bold(),
-        "--help".bright_cyan().bold()
+        "See '{}' for more information",
+        "run --help".bright_cyan().bold()
     );
     std::process::exit(1);
 }

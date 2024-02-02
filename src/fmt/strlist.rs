@@ -1,6 +1,4 @@
-use colored::{Color, Colorize};
-
-pub type Str<'a> = beef::lean::Cow<'a, str>;
+use super::Str;
 
 #[derive(Debug, Clone)]
 pub struct StrList<'a> {
@@ -10,8 +8,6 @@ pub struct StrList<'a> {
 #[derive(Debug, Clone, Copy)]
 pub struct StrListSlice<'a> {
     elements: &'a [Str<'a>],
-    color: Color,
-    bold: bool,
 }
 
 #[allow(dead_code)]
@@ -36,6 +32,11 @@ impl<'a> StrList<'a> {
 
     pub fn append(mut self, s: impl Into<Str<'a>>) -> Self {
         self.elements.push(s.into());
+        self
+    }
+
+    pub fn extend(mut self, s: impl IntoIterator<Item = impl Into<Str<'a>>>) -> Self {
+        self.elements.extend(s.into_iter().map(|s| s.into()));
         self
     }
 
@@ -90,11 +91,7 @@ impl<'a> StrList<'a> {
 #[allow(dead_code)]
 impl<'a> StrListSlice<'a> {
     fn new(elements: &'a [Str<'a>]) -> Self {
-        Self {
-            elements,
-            color: Color::White,
-            bold: false,
-        }
+        Self { elements }
     }
 
     pub fn first(&'a self) -> Option<&'a str> {
@@ -115,16 +112,6 @@ impl<'a> StrListSlice<'a> {
     pub fn elements(&'a self) -> &'a [Str<'a>] {
         self.elements.get(1..).unwrap_or_default()
     }
-
-    pub fn color(mut self, color: Color) -> Self {
-        self.color = color;
-        self
-    }
-
-    pub fn bold(mut self) -> Self {
-        self.bold = true;
-        self
-    }
 }
 
 impl<'a> std::fmt::Display for StrList<'a> {
@@ -135,16 +122,7 @@ impl<'a> std::fmt::Display for StrList<'a> {
 
 impl<'a> std::fmt::Display for StrListSlice<'a> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut iter = self.elements().iter().map(|s| {
-            let mut s = colored::ColoredString::from(s.as_ref());
-            if self.bold {
-                s = s.bold()
-            }
-            if self.color != Color::White {
-                s = s.color(self.color)
-            }
-            s
-        });
+        let mut iter = self.elements().iter();
         let separator = self.separator();
         if let Some(first) = iter.next() {
             write!(f, "{}", first)?;
@@ -188,5 +166,15 @@ impl<'a> IntoIterator for StrListSlice<'a> {
 
     fn into_iter(self) -> Self::IntoIter {
         self.elements.get(1..).unwrap_or_default().iter()
+    }
+}
+
+impl<'a, S> std::iter::Extend<S> for StrList<'a>
+where
+    S: Into<Str<'a>>,
+{
+    fn extend<T: IntoIterator<Item = S>>(&mut self, iter: T) {
+        let iter = iter.into_iter().map(|s| s.into());
+        self.elements.extend(iter);
     }
 }

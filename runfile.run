@@ -1,6 +1,6 @@
-/// The default command gets executed when the program is called without arguments
+/// The default command gets executed when the runfile is called without arguments
 cmd default() {
-  # 'doc' is a special variable that contains the whole documentation of the program
+  # 'doc' is a special variable that contains the whole documentation of the runfile
   echo -n "$doc";
 }
 
@@ -13,6 +13,7 @@ const constant_with_spaces = Constantinople is a nice city, I'd like to visit it
 const whitespace = "  \t  "
 // Use '$(...)' to evaluate a math expression
 const math = $(1 + 2 * 3 / 4)
+
 /// Command that uses constants
 cmd constants() {
   echo constant = $constant;
@@ -70,6 +71,8 @@ c cmd c(name) {
   }
 }
 
+// The same happens with C++
+/// C++ command
 c++ cmd cpp(name) {
   #include <iostream>
   int main() {
@@ -77,10 +80,22 @@ c++ cmd cpp(name) {
   }
 }
 
+c# cmd csharp(name) {
+  Console.WriteLine("Hello $name from C#!");
+}
+
 // Multiple arguments are separated by spaces
-// All arguments are positional and required (at the moment)
+// All arguments are positional and required
+/// Command with multiple arguments
 cmd args(name age) {
   echo "Hello $name, you are $age years old."
+}
+
+// You can read other arguments from the environment (argv in C)
+/// Try calling me with more than one argument!
+rs cmd extra-args(first) {
+  println!("The first explicit argument is $first");
+  println!("The other ones are: {:?}", std::env::args().skip(1).collect::<Vec<_>>());
 }
 
 // You can define subcommands with the 'sub' keyword

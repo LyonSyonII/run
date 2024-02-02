@@ -22,7 +22,7 @@
 - [] Typescript
 - [x] C
 - [x] C++
-- [] C#
+- [x] C#
 - [] Java
 
 ## Advanced Language Features
@@ -41,6 +41,11 @@
 
 ## Experimentation
 - [] Use `git bash` on Windows when language is `sh/bash`
+
+## Code Improvement
+- [x] Use common "create_project" for all languages (based on cpp.rs)
+- [x] Do not capture command output (inherit instead) and write to tmp file always (instead of using stdin)
+- [] Improve error message when too many args are passed
 
 ## Testing
 - [x] Very very long file

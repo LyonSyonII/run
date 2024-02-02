@@ -1,10 +1,15 @@
 use std::format as f;
 use std::io::Write as _;
 
-use colored::{Color, Colorize};
+// use colored::{Color, Colorize};
+use yansi::{Color, Paint};
 
 use crate::command::Command;
-use crate::strlist::{Str, StrList, StrListSlice};
+use crate::fmt::{
+    strlist::{StrList, StrListSlice},
+    Str,
+};
+use crate::lang::Language as _;
 use crate::utils::OptionExt;
 use crate::HashMap;
 
@@ -43,27 +48,22 @@ impl<'i> Runfile<'i> {
 
     pub fn doc(&self, name: impl AsRef<str>, parents: StrListSlice) -> StrList<'_> {
         let name = name.as_ref();
-        let parents = parents.color(Color::BrightCyan).bold();
+        let parents = parents.bright_cyan().bold();
         let (name, usage) = if name.is_empty() {
             // Main
             (None, "Usage:".bright_green().bold())
         } else {
             // Subcommand
-            (Some(name.to_string().bright_cyan().bold()), "Usage:".bold())
+            (Some(name.bright_cyan().bold()), "Usage:".bold())
         };
-
-        let lines: StrList = ("\n", self.doc.lines()).into();
-        let last = lines.last().unwrap_or_default();
-        if last.starts_with("Usage:") {
-            return lines;
-        }
 
         let usage = if let Some(name) = name {
             f!("{usage} {parents} {name} {}", "[COMMAND] [ARGS...]".cyan())
         } else {
             f!("{usage} {parents} {}", "[COMMAND] [ARGS...]".cyan())
         };
-        lines.append(usage)
+        let lines = StrList::from(("\n", std::iter::once(usage)));
+        lines.extend(self.doc.lines())
     }
 
     fn print_commands(
@@ -79,26 +79,29 @@ impl<'i> Runfile<'i> {
         }
 
         writeln!(to, "{}", "Commands:".bright_green().bold()).map_err(op)?;
-        let commands = self.commands.values().collect::<Vec<_>>();
+        let is_nix = crate::nix::is_nix();
         let mut warnings = Vec::new();
         let (lang_indent, name_indent) = indent;
-        for cmd in commands {
+        for cmd in self.commands.values() {
             let doc = cmd.doc(parents);
             let mut lines = doc.into_iter();
 
             let first = lines.next().unwrap();
             let lang = cmd.lang();
-            let lang = {
-                let color = if lang.installed() {
-                    Color::Cyan
-                } else {
-                    warnings.push(lang);
-                    Color::BrightYellow
-                };
-                format!("<{}> ", lang.as_str()).color(color)
+            // if nix is installed all languages are installed
+            let color = if lang.installed() || is_nix {
+                Color::Cyan
+            } else {
+                warnings.push(lang);
+                Color::BrightYellow
             };
-            let name = format!("{} ", cmd.name()).bright_cyan().bold();
-            writeln!(to, " {lang:·<lang_indent$} {name:·<name_indent$} {first}").map_err(op)?;
+            let name = cmd.name().bright_cyan().bold();
+            writeln!(
+                to,
+                " {lang:<lang_indent$} {name:<name_indent$} {first}",
+                lang = format!("<{lang}>").paint(color)
+            )
+            .map_err(op)?;
             for l in lines {
                 writeln!(to, " {:lang_indent$} {:name_indent$} {}", "", "", l).map_err(op)?;
             }
@@ -138,17 +141,14 @@ impl<'i> Runfile<'i> {
 
         writeln!(to, "{}", "Subcommands:".bright_green().bold()).map_err(op)?;
         let subcommands = self.subcommands.iter().collect::<Vec<_>>();
-        // subcommands.sort_unstable_by(|(n1, _), (n2, _)| n1.cmp(n2));
-        // let (lang_indent, name_indent) = indent;
         let indent = indent.0 + indent.1;
         for (name, sub) in subcommands {
             let mut doc = sub.doc(name, parents);
-            // let name = f!(" {:lang_indent$} {:·<name_indent$}", "", f!("{name} ")).bright_cyan().bold();
-            let name = f!(" {:·<indent$}·", f!("{name} ")).bright_cyan().bold();
-            writeln!(to, "{name} {}", doc.pop_front().unwrap()).map_err(op)?;
+            let name = name.bright_cyan().bold();
+            writeln!(to, " {name:<indent$}  {}", doc.pop_front().unwrap()).map_err(op)?;
             for l in doc {
                 // writeln!(to, " {:lang_indent$} {:name_indent$} {l}", "", "").map_err(op)?;
-                writeln!(to, " {:indent$}  {l}", "").map_err(op)?;
+                writeln!(to, "  {:indent$} {l}", "").map_err(op)?;
             }
         }
 
@@ -157,7 +157,7 @@ impl<'i> Runfile<'i> {
 
     fn print_help(
         &self,
-        msg: impl AsRef<str>,
+        msg: Option<impl std::fmt::Display>,
         parents: StrListSlice,
         to: &mut (impl std::io::Write + ?Sized),
     ) -> Result<(), Str<'_>> {
@@ -166,8 +166,8 @@ impl<'i> Runfile<'i> {
 
         let indent = self.calculate_indent();
 
-        if !msg.is_empty() {
-            writeln!(to, "{}", msg).map_err(op)?;
+        if let Some(msg) = msg {
+            writeln!(to, "{msg}").map_err(op)?;
         }
         writeln!(to, "{}", self.doc("", parents)).map_err(op)?;
         if !self.commands.is_empty() || !self.subcommands.is_empty() {
@@ -189,7 +189,7 @@ impl<'i> Runfile<'i> {
         let first = args.first();
         // Needed for subcommands
         if first.is_some_and_oneof(["-h", "--help"]) {
-            self.print_help("", parents.as_slice(), &mut std::io::stdout())?;
+            self.print_help(None::<&str>, parents.as_slice(), &mut std::io::stdout())?;
             return Ok(());
         }
         if first.is_some_and_oneof(["-c", "--commands"]) {
@@ -204,18 +204,19 @@ impl<'i> Runfile<'i> {
 
         let runfile_docs = || {
             let mut buf = Vec::new();
-            self.print_help("", parents.as_slice(), &mut buf)
+            self.print_help(None::<&str>, parents.as_slice(), &mut buf)
                 .unwrap_or_default();
             String::from_utf8(buf).map_err(|e| e.to_string())
         };
 
-        let Some(first) = first.map(String::as_str) else {
+        let default = || {
             let Some(cmd) = self.commands.get("default") else {
                 self.print_help(
-                    "Error: No command specified and no default command found"
-                        .bright_red()
-                        .bold()
-                        .to_string(),
+                    Some(
+                        "Error: No command specified and no default command found"
+                            .bright_red()
+                            .bold(),
+                    ),
                     parents.as_slice(),
                     &mut std::io::stderr(),
                 )?;
@@ -224,6 +225,10 @@ impl<'i> Runfile<'i> {
             return cmd
                 .run(parents.as_slice(), args, &self.vars, runfile_docs()?)
                 .map_err(|e| f!("Command execution failed: {}", e).into());
+        };
+
+        let Some(first) = first.map(String::as_str) else {
+            return default();
         };
 
         if let Some(cmd) = self.commands.get(first) {
@@ -236,15 +241,23 @@ impl<'i> Runfile<'i> {
             .map_err(|e| f!("Command execution failed: {}", e).into())
         } else if let Some(sub) = self.subcommands.get(first) {
             sub.run(parents.append(first), args.get(1..).unwrap_or_default())
-        } else {
+        } else if self
+            .commands
+            .get("default")
+            .is_some_and(|d| d.args().is_empty())
+        {
             self.print_help(
-                f!("Error: Could not find command or subcommand '{}'", first)
-                    .bright_red()
-                    .to_string(),
+                Some(
+                    format_args!("Error: Could not find command or subcommand '{}'\n", first)
+                        .bright_red()
+                        .bold(),
+                ),
                 parents.as_slice(),
                 &mut std::io::stderr(),
             )?;
             std::process::exit(1);
+        } else {
+            default()
         }
     }
 }

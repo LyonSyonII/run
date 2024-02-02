@@ -1,9 +1,9 @@
 use crate::command::Command;
 use crate::error::Error;
-use crate::lang::Language;
+use crate::lang::Lang;
 
+use crate::fmt::Str;
 use crate::runfile::Runfile;
-use crate::strlist::Str;
 pub use runfile::runfile;
 
 use crate::HashMap;
@@ -26,10 +26,10 @@ peg::parser! {
         pub rule doc() -> String = c:(("///" c:$([^'\n']*){ c.trim() }) ** "\n") { c.join("\n") }
         pub rule comment() = (!"///" "//" [^'\n']*) ++ "\n" / "/*" (!"*/" [_])* "*/"
 
-        pub rule language() -> Result<Language, Error> = start:pos() i:$([^' '|'\n'|'\t'|'\r'|'('|')'|'{'|'}'|'['|']']+) end:pos() __ ("fn"/"cmd")? {
+        pub rule language() -> Result<Lang, Error> = start:pos() i:$([^' '|'\n'|'\t'|'\r'|'('|')'|'{'|'}'|'['|']']+) end:pos() __ ("fn"/"cmd")? {
             i.parse().map_err(|e| Error::PParseLang(e, start, end))
         } / ("fn"/"cmd") {
-            Ok(Language::Shell)
+            Ok(crate::lang::Shell.into())
         } / start:pos() end:pos() {
             Error::PExpectedLangOrCmd(start, end).err()
         }
@@ -65,7 +65,7 @@ peg::parser! {
                 }
             }
 
-            let lang = unwrap(lang, Language::Shell, &mut errors);
+            let lang = unwrap(lang, crate::lang::Shell.into(), &mut errors);
             let name = unwrap(name, "", &mut errors);
             let args = unwrap(args, Vec::new(), &mut errors);
             // unwrap(count, 0, &mut errors);

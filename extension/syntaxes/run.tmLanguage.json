@@ -192,18 +192,7 @@
                     "match": "\\$\\w+" 
                 },
                 {
-                    "begin": "rs|rust",
-                    "end": "(?<=})",
-                    "beginCaptures": {
-                        "0": { "name": "entity.name.class.run" }
-                    },
-                    "patterns": [
-                        { "include": "#function" },
-                        { "include": "source.rust" }
-                    ]
-                },
-                {
-                    "begin": "\\b(cpp|c\\+\\+).*\\b(cmd)\\b\\s+([^\\s]+)\\s*(\\(.*\\))\\s*\\{",
+                    "begin": "\\b(rs|rust).*\\b(cmd)\\b\\s+([^\\s]+)\\s*(\\(.*\\))\\s*\\{",
                     "end": "(?<=\\})",
                     "beginCaptures": {
                         "1": { "name": "entity.name.class.run" },
@@ -212,8 +201,33 @@
                         "4": { "name": "variable.parameter.run" }
                     },
                     "patterns": [
-                        { "include": "#function" },
+                        { "include": "source.rust" }
+                    ]
+                },
+                {
+                    "begin": "\\b(cpp|c\\+\\+|cplusplus).*\\b(cmd)\\b\\s+([^\\s]+)\\s*(\\(.*\\))\\s*\\{",
+                    "end": "(?<=\\})",
+                    "beginCaptures": {
+                        "1": { "name": "entity.name.class.run" },
+                        "2": { "name": "keyword.command.run" },
+                        "3": { "name": "entity.name.function.run" },
+                        "4": { "name": "variable.parameter.run" }
+                    },
+                    "patterns": [
                         { "include": "source.cpp" }
+                    ]
+                },
+                {
+                    "begin": "\\b(csharp|cs|c#).*\\b(cmd)\\b\\s+([^\\s]+)\\s*(\\(.*\\))\\s*\\{",
+                    "end": "(?<=\\})",
+                    "beginCaptures": {
+                        "1": { "name": "entity.name.class.run" },
+                        "2": { "name": "keyword.command.run" },
+                        "3": { "name": "entity.name.function.run" },
+                        "4": { "name": "variable.parameter.run" }
+                    },
+                    "patterns": [
+                        { "include": "source.cs" }
                     ]
                 },
                 {

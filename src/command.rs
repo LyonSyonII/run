@@ -1,18 +1,22 @@
 pub use std::format as fmt;
 use std::io::Write;
 
-use colored::{Color, Colorize as _};
+// use colored::{Color, Colorize as _};
+use yansi::{Color, Paint as _};
 
 use crate::{
-    lang::Language,
-    strlist::{Str, StrList, StrListSlice},
+    fmt::{
+        strlist::{StrList, StrListSlice},
+        Str,
+    },
+    lang::{Lang, Language},
 };
 
 #[derive(Eq, Clone)]
 pub struct Command<'i> {
     name: &'i str,
     doc: String,
-    lang: Language,
+    lang: Lang,
     args: Vec<&'i str>,
     script: &'i str,
 }
@@ -22,7 +26,7 @@ impl<'i> Command<'i> {
     pub fn new(
         name: &'i str,
         doc: String,
-        lang: Language,
+        lang: Lang,
         args: Vec<&'i str>,
         script: &'i str,
     ) -> Self {
@@ -39,7 +43,7 @@ impl<'i> Command<'i> {
         self.name
     }
 
-    pub fn lang(&self) -> Language {
+    pub fn lang(&self) -> Lang {
         self.lang
     }
 
@@ -50,17 +54,14 @@ impl<'i> Command<'i> {
     // Clippy does not detect the usage in the 'format!' macro
     #[allow(unused_variables)]
     pub fn usage(&self, parents: StrListSlice, color: Color, newlines: usize) -> String {
-        let usage = "Usage:".color(color).bold();
-        let parents = parents.color(Color::BrightCyan).bold();
+        let usage = "Usage:".paint(color).bold();
+        let parents = parents.bright_cyan().bold();
         let name = self.name.bright_cyan().bold();
-        let args = self
-            .args
-            .iter()
-            .fold(String::new(), |acc, a| {
-                acc + "<" + &a.to_uppercase() + ">" + " "
-            })
-            .cyan();
-        if name.contains("default") {
+        let args = self.args.iter().fold(String::new(), |acc, a| {
+            acc + "<" + &a.to_uppercase() + ">" + " "
+        });
+        let args = args.cyan();
+        if name.value == "default" {
             return format!("{usage} {parents} {args}{}", "\n".repeat(newlines));
         }
         format!("{}{usage} {parents} {name} {args}", "\n".repeat(newlines))
@@ -71,14 +72,8 @@ impl<'i> Command<'i> {
     }
 
     pub fn doc(&'i self, parents: StrListSlice) -> StrList<'i> {
-        let lines = StrList::from(("\n", self.doc.lines()));
-        let last = lines.last().unwrap_or_default();
-        if !last.starts_with("Usage:") {
-            let usage = self.usage(parents, Color::White, 0);
-            lines.append(usage)
-        } else {
-            lines
-        }
+        let usage = self.usage(parents, Color::White, 0);
+        StrList::from(("\n", std::iter::once(usage))).extend(self.doc.lines())
     }
 
     pub fn print_help(
@@ -124,36 +119,42 @@ impl<'i> Command<'i> {
         }
 
         if args.len() < self.args.len() {
-            let error = format!(
-                "{parents} {name}: Expected arguments {:?}, got {:?}",
-                self.args, args
-            )
-            .bright_red()
-            .bold();
-            eprintln!("{error}");
-            let help = format!("{parents} {name} --help").bold().bright_cyan();
-            eprintln!("See '{help}' for more information");
+            let expected = StrList::from((
+                ", ",
+                self.args.iter().map(|a| format!("<{}>", a.to_uppercase())),
+            ));
+            let got = StrList::from((", ", args.iter().map(|a| a.as_str())));
+            eprintln!(
+                "{}{parents} {name}: Expected arguments [{expected}], got [{got}]{}",
+                "".bright_red().bold().linger(),
+                "".clear()
+            );
+            eprintln!(
+                "See '{}{parents} {name} --help{}' for more information",
+                "".bright_cyan().bold(),
+                "".clear()
+            );
             std::process::exit(1);
         }
 
         // Remove indentation from script
         let script = replace_all(
             self.script_with_indent_fix(),
-            (&self.args, args),
+            (&self.args, &args[..self.args.len()]),
             vars,
             runfile_docs,
             self.doc(parents).to_string(),
             self.usage(parents, Color::White, 0),
         );
-
+        let args = args.get(self.args.len()..).unwrap_or(&[]);
         // Run the script
-        if let Err(e) = self.lang.execute(&script) {
+        if let Err(e) = self.lang.execute(&script, args) {
             eprintln!(
-                "{} {} {}{}\n",
-                "Error running".bright_red().bold(),
-                parents.color(Color::BrightRed).bold(),
-                name.bright_red().bold(),
-                ":".bright_red().bold()
+                "{}{} {}{}\n",
+                "Error running '".bright_red().bold(),
+                parents.magenta().bold(),
+                name.magenta().bold(),
+                "':".bright_red().bold()
             );
             eprintln!("{e}");
         }

@@ -33,6 +33,7 @@
           nodePackages.pnpm
           nodejs
           sccache
+          nil
         ];
       };
     };

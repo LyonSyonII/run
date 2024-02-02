@@ -58,7 +58,7 @@ mod unused {
                         .map(|a| clap::Arg::new(a.to_string()).required(true)),
                 )
         });
-        
+
         clap::Command::new("run")
             .args([
                 arg!(-h --help "Prints help information"),
@@ -67,20 +67,20 @@ mod unused {
             ])
             .subcommands(commands)
     }
-    
+
     pub fn gen_completion(shell: Shell, mut app: Command, to: &mut impl std::io::Write) {
         clap_complete::generate(shell, &mut app, "run", to);
     }
-    
+
     pub fn write_completions(runfile: &Runfile<'_>) {
         let app = build_cli(runfile);
-        
+
         let shell = get_shell();
-        
+
         let mut out = Vec::<u8>::new();
         gen_completion(shell, app, &mut out);
         println!("{}", std::str::from_utf8(&out).unwrap());
-        
+
         let mut child = std::process::Command::new("complete")
             .arg("/dev/stdin")
             .stdin(std::process::Stdio::piped())
