@@ -1,5 +1,3 @@
-cargo-features = ["codegen-backend"]
-
 [package]
 name = "runfile"
 description = "Run commands in the languages you love!"
@@ -33,7 +31,6 @@ thiserror = "1.0.56"                                                            
 enum_dispatch = "0.3.12"
 
 [profile.dev]
-codegen-backend = "cranelift"
 debug = false
 strip = true
 
