@@ -34,11 +34,12 @@ impl super::Language for Cpp {
             .or_else(|error| crate::nix::nix_shell(["gcc"], "g++").ok_or(error))
     }
 
-    fn execute(&self, input: &str) -> Result<(), Str<'_>> {
+    fn execute(&self, input: &str, args: impl AsRef<[String]>) -> Result<(), Str<'_>> {
         super::execute_compiled(
             "cpp",
             "main.cpp",
             input,
+            args,
             None,
             self.program()?.args(["main.cpp", "-o", "main"]),
             &mut std::process::Command::new("./main"),

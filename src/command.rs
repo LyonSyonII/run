@@ -119,11 +119,14 @@ impl<'i> Command<'i> {
         }
 
         if args.len() < self.args.len() {
+            let expected = StrList::from((
+                ", ",
+                self.args.iter().map(|a| format!("<{}>", a.to_uppercase())),
+            ));
+            let got = StrList::from((", ", args.iter().map(|a| a.as_str())));
             eprintln!(
-                "{}{parents} {name}: Expected arguments {:?}, got {:?}{}",
+                "{}{parents} {name}: Expected arguments [{expected}], got [{got}]{}",
                 "".bright_red().bold().linger(),
-                self.args,
-                args,
                 "".clear()
             );
             eprintln!(
@@ -137,15 +140,15 @@ impl<'i> Command<'i> {
         // Remove indentation from script
         let script = replace_all(
             self.script_with_indent_fix(),
-            (&self.args, args),
+            (&self.args, &args[..self.args.len()]),
             vars,
             runfile_docs,
             self.doc(parents).to_string(),
             self.usage(parents, Color::White, 0),
         );
-
+        let args = args.get(self.args.len()..).unwrap_or(&[]);
         // Run the script
-        if let Err(e) = self.lang.execute(&script) {
+        if let Err(e) = self.lang.execute(&script, args) {
             eprintln!(
                 "{}{} {}{}\n",
                 "Error running '".bright_red().bold(),

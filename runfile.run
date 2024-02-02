@@ -84,6 +84,20 @@ c# cmd csharp(name) {
   Console.WriteLine("Hello $name from C#!");
 }
 
+// Multiple arguments are separated by spaces
+// All arguments are positional and required
+/// Command with multiple arguments
+cmd args(name age) {
+  echo "Hello $name, you are $age years old."
+}
+
+// You can read other arguments from the environment (argv in C).
+/// Try calling me with more than one argument!
+rs cmd extra-args(first) {
+  println!("The first explicit argument is $first");
+  println!("The other ones are: {:?}", std::env::args().skip(1).collect::<Vec<_>>());
+}
+
 // You can define subcommands with the 'sub' keyword
 // Subcommands can be called with the syntax: 'run subcommand'
 // Use 'run subcommand --help' to see the subcommand's documentation

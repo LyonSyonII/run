@@ -31,15 +31,16 @@ impl super::Language for Rust {
             .or_else(|error| crate::nix::nix_shell([BINARY, "gcc"], BINARY).ok_or(error))
     }
 
-    fn execute(&self, input: &str) -> Result<(), Str<'_>> {
+    fn execute(&self, input: &str, args: impl AsRef<[String]>) -> Result<(), Str<'_>> {
         let input = format!("fn main() {{\n{}\n}}", input);
         super::execute_compiled(
             "rust",
             "src/main.rs",
             &input,
+            args,
             Some(self.program()?.args(["init", "--name", "runfile"])),
             self.program()?.args(["build", "--color", "always"]),
-            self.program()?.args(["run", "-q"]),
+            self.program()?.args(["run", "-q", "--"]),
         )
     }
 }

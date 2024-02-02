@@ -36,11 +36,12 @@ impl super::Language for C {
             .or_else(|error| crate::nix::nix_shell(["gcc"], "gcc").ok_or(error))
     }
 
-    fn execute(&self, input: &str) -> Result<(), Str<'_>> {
+    fn execute(&self, input: &str, args: impl AsRef<[String]>) -> Result<(), Str<'_>> {
         super::execute_compiled(
             "c",
             "main.c",
             input,
+            args,
             None,
             self.program()?.args(["main.c", "-o", "main"]),
             &mut std::process::Command::new("./main"),

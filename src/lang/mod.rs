@@ -38,8 +38,8 @@ pub trait Language {
     fn as_str(&self) -> &'static str;
     fn binary(&self) -> &'static str;
     fn nix_packages(&self) -> &'static [&'static str];
-    fn execute(&self, input: &str) -> Result<(), Str<'_>> {
-        execute_interpreted(self.program()?, input)
+    fn execute(&self, input: &str, args: impl AsRef<[String]>) -> Result<(), Str<'_>> {
+        execute_interpreted(self.program()?, input, args)
     }
     fn installed(&self) -> bool {
         which::which(self.binary()).is_ok()
@@ -114,11 +114,13 @@ fn wait_for_child(mut child: std::process::Child) -> Result<(), Str<'static>> {
 fn execute_interpreted(
     mut program: std::process::Command,
     input: &str,
+    args: impl AsRef<[String]>,
 ) -> Result<(), Str<'static>> {
     let name = format!("{:?}", program.get_program());
     let file = write_to_tmp("input", input).unwrap();
     let child = program
         .arg(file)
+        .args(args.as_ref())
         .spawn()
         .map_err(|error| execution_failed(name, error))?;
     wait_for_child(child)
@@ -161,6 +163,7 @@ fn execute_compiled(
     lang: &str,
     proj_main: impl AsRef<std::path::Path>,
     input: &str,
+    args: impl AsRef<[String]>,
     init: Option<&mut std::process::Command>,
     compile: &mut std::process::Command,
     run: &mut std::process::Command,
@@ -180,6 +183,7 @@ fn execute_compiled(
     }
 
     let child = run
+        .args(args.as_ref())
         .spawn()
         .map_err(|error| execution_failed(run.get_program().to_string_lossy(), error))?;
 
