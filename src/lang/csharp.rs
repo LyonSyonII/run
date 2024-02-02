@@ -14,7 +14,11 @@ impl super::Language for CSharp {
         &["dotnet-sdk"]
     }
 
-    fn execute(&self, input: &str, args: impl AsRef<[String]>) -> Result<(), crate::fmt::Str<'static>> {
+    fn execute(
+        &self,
+        input: &str,
+        args: impl AsRef<[String]>,
+    ) -> Result<(), crate::fmt::Str<'static>> {
         super::execute_compiled(
             "csharp",
             "Program.cs",

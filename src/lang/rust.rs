@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use crate::fmt::Str;
 
 const BINARY: &str = "cargo";
@@ -43,46 +41,4 @@ impl super::Language for Rust {
             self.program()?.args(["run", "-q", "--"]),
         )
     }
-}
-
-/// Creates a new Rust project in the cache directory, sets the current directory to it and writes `input` into main.rs
-fn create_project(mut program: std::process::Command, input: &str) -> Result<(), Str<'static>> {
-    let app_info = app_dirs2::AppInfo {
-        name: "runfile",
-        author: "lyonsyonii",
-    };
-    let path = format!("cache/rust/{:x}", md5::compute(input));
-    let Ok(path) = app_dirs2::app_dir(app_dirs2::AppDataType::UserCache, &app_info, &path) else {
-        return Err("Could not create project directory".into());
-    };
-
-    let Ok(_) = std::env::set_current_dir(&path) else {
-        return Err(format!("Could not set current directory to {path:?}").into());
-    };
-
-    if std::fs::metadata(path.join("Cargo.toml")).is_err() {
-        program
-            .arg("init")
-            .args(["--name", "runfile"])
-            // .stderr(std::process::Stdio::piped())
-            .spawn()
-            .map_err(|error| super::execution_failed(BINARY, error))?
-            .wait()
-            .map_err(|error| super::execution_failed(BINARY, error))?;
-    }
-
-    let path = path.join("src");
-
-    let Ok(_) = std::env::set_current_dir("./src") else {
-        return Err(format!("Could not set current directory to {path:?}").into());
-    };
-
-    let mut main = std::fs::File::create("main.rs")
-        .map_err(|e| format!("Could not create main.rs\nComplete error: {e}"))?;
-
-    let input = format!("fn main() {{\n{}\n}}", input);
-    main.write_all(input.as_bytes())
-        .map_err(|e| format!("Could not write input to main.rs\nComplete error: {e}"))?;
-
-    Ok(())
 }

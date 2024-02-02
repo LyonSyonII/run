@@ -91,7 +91,7 @@ cmd args(name age) {
   echo "Hello $name, you are $age years old."
 }
 
-// You can read other arguments from the environment (argv in C).
+// You can read other arguments from the environment (argv in C)
 /// Try calling me with more than one argument!
 rs cmd extra-args(first) {
   println!("The first explicit argument is $first");

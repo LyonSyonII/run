@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use crate::fmt::Str;
 
 const BINARIES: &[&str] = &["gcc", "clang"];
