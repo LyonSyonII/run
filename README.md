@@ -52,7 +52,7 @@ cargo install runfile
 ```
 
 ### VSCode Extension
-There's a [VSCode extension](https://marketplace.visualstudio.com/items?itemName=LyonSyonII.runfile) that provides syntax highlighting for `runfile` scripts.
+There's a VSCode extension that provides syntax highlighting for `runfile` scripts.
 
 It's experimental, so you'll need to install it manually.
 
