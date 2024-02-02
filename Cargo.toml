@@ -1,7 +1,7 @@
 [package]
 name = "runfile"
 description = "Run commands in the languages you love!"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Liam Garriga <liam@garriga.dev>"]
 repository = "https://github.com/lyonsyonii/run"

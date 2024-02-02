@@ -329,7 +329,7 @@ dependencies = [
 
 [[package]]
 name = "runfile"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "aho-corasick",
  "app_dirs2",
