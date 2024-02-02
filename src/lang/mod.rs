@@ -39,7 +39,7 @@ pub trait Language {
     fn binary(&self) -> &'static str;
     fn nix_packages(&self) -> &'static [&'static str];
     fn execute(&self, input: &str) -> Result<(), Str<'_>> {
-        execute_simple(self.program()?, input)
+        execute_interpreted(self.program()?, input)
     }
     fn installed(&self) -> bool {
         which::which(self.binary()).is_ok()
@@ -111,13 +111,78 @@ fn wait_for_child(mut child: std::process::Child) -> Result<(), Str<'static>> {
 /// ```bash
 /// echo "print('Hello')" > /tmp/run/input && python /tmp/run/input
 /// ```
-fn execute_simple(mut program: std::process::Command, input: &str) -> Result<(), Str<'static>> {
+fn execute_interpreted(
+    mut program: std::process::Command,
+    input: &str,
+) -> Result<(), Str<'static>> {
     let name = format!("{:?}", program.get_program());
     let file = write_to_tmp("input", input).unwrap();
     let child = program
         .arg(file)
         .spawn()
         .map_err(|error| execution_failed(name, error))?;
+    wait_for_child(child)
+}
+
+fn create_project(
+    name: &str,
+    init: Option<&mut std::process::Command>,
+    main: impl AsRef<std::path::Path>,
+    input: &str,
+) -> Result<std::path::PathBuf, Str<'static>> {
+    static APP_INFO: app_dirs2::AppInfo = app_dirs2::AppInfo {
+        name: "runfile",
+        author: "lyonsyonii",
+    };
+    let main = main.as_ref();
+
+    let path = format!("cache/{name}/{:x}", md5::compute(input));
+    if std::path::Path::new(&path).exists() {
+        return Ok(path.into());
+    }
+
+    let Ok(path) = app_dirs2::app_dir(app_dirs2::AppDataType::UserCache, &APP_INFO, &path) else {
+        return Err("Could not create project directory".into());
+    };
+
+    if let Some(init) = init {
+        init.current_dir(&path)
+            .output()
+            .map_err(|error| execution_failed(init.get_program().to_string_lossy(), error))?;
+    }
+
+    std::fs::write(path.join(main), input)
+        .map_err(|e| format!("Could not write input to {path:?}/{main:?}\nComplete error: {e}"))?;
+
+    Ok(path)
+}
+
+fn execute_compiled(
+    lang: &str,
+    proj_main: impl AsRef<std::path::Path>,
+    input: &str,
+    init: Option<&mut std::process::Command>,
+    compile: &mut std::process::Command,
+    run: &mut std::process::Command,
+) -> Result<(), Str<'static>> {
+    let path = create_project(lang, init, proj_main, input)?;
+    std::env::set_current_dir(&path)
+        .map_err(|e| format!("Could not set current directory to {path:?}\nComplete error: {e}"))?;
+
+    let compile = compile
+        .output()
+        .map_err(|error| execution_failed(compile.get_program().to_string_lossy(), error))?;
+
+    if !compile.status.success() {
+        let err = String::from_utf8(compile.stderr)
+            .map_err(|_| "Failed to parse command output as UTF-8")?;
+        return Err(Str::from(err));
+    }
+
+    let child = run
+        .spawn()
+        .map_err(|error| execution_failed(run.get_program().to_string_lossy(), error))?;
+
     wait_for_child(child)
 }
 

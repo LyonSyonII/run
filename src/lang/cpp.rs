@@ -1,5 +1,3 @@
-use std::io::Write;
-
 use crate::fmt::Str;
 
 const BINARIES: &[&str] = &["g++", "clang"];
@@ -37,43 +35,13 @@ impl super::Language for Cpp {
     }
 
     fn execute(&self, input: &str) -> Result<(), Str<'_>> {
-        create_project(input)?;
-    
-        let compile = self.program()?
-            .args(["main.cpp", "-o", "main"])
-            .output()
-            .map_err(|error| super::execution_failed("g++/clang", error))?;
-        
-        if !compile.status.success() {
-            let err = String::from_utf8(compile.stderr)
-                .map_err(|_| "Failed to parse command output as UTF-8")?;
-            return Err(Str::from(err));
-        }
-        
-        let child = std::process::Command::new("./main")
-            .spawn()
-            .map_err(|error| super::execution_failed("g++/clang", error))?;
-        
-        super::wait_for_child(child)
+        super::execute_compiled(
+            "cpp",
+            "main.cpp",
+            input,
+            None,
+            self.program()?.args(["main.cpp", "-o", "main"]),
+            &mut std::process::Command::new("./main"),
+        )
     }
-}
-
-/// Creates a new C++ project in the cache directory, sets the current directory to it and writes `input` into main.cpp
-fn create_project(input: &str) -> Result<(), Str<'static>> {
-    let app_info = app_dirs2::AppInfo {
-        name: "runfile",
-        author: "lyonsyonii",
-    };
-    let path = format!("cache/cpp/{:x}", md5::compute(input));
-    let Ok(path) = app_dirs2::app_dir(app_dirs2::AppDataType::UserCache, &app_info, &path) else {
-        return Err("Could not create project directory".into());
-    };
-    
-    std::fs::write(path.join("main.cpp"), input)
-        .map_err(|e| format!("Could not write input to main.cpp\nComplete error: {e}"))?;
-
-    std::env::set_current_dir(&path)
-        .map_err(|e| format!("Could not set current directory to {path:?}\nComplete error: {e}"))?;
-    
-    Ok(())
 }

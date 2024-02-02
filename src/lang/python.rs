@@ -6,11 +6,11 @@ impl super::Language for Python {
         "py"
     }
 
-    fn binary(&self) ->  &'static str {
+    fn binary(&self) -> &'static str {
         "python"
     }
-    
-    fn nix_packages(&self) ->  &'static [&'static str] {
+
+    fn nix_packages(&self) -> &'static [&'static str] {
         &["python3Minimal"]
     }
 }

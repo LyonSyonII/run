@@ -39,14 +39,15 @@ impl super::Language for Rust {
             .args(["build", "--color", "always"])
             .output()
             .map_err(|error| super::execution_failed(BINARY, error))?;
-        
+
         if !compile.status.success() {
             let err = String::from_utf8(compile.stderr)
                 .map_err(|_| "Failed to parse command output as UTF-8")?;
             return Err(Str::from(err));
         }
 
-        let child = self.program()?
+        let child = self
+            .program()?
             .args(["run", "-q"])
             .spawn()
             .map_err(|error| super::execution_failed(BINARY, error))?;
@@ -86,7 +87,7 @@ fn create_project(mut program: std::process::Command, input: &str) -> Result<(),
     let Ok(_) = std::env::set_current_dir("./src") else {
         return Err(format!("Could not set current directory to {path:?}").into());
     };
-    
+
     let mut main = std::fs::File::create("main.rs")
         .map_err(|e| format!("Could not create main.rs\nComplete error: {e}"))?;
 

@@ -10,7 +10,7 @@ impl super::Language for Shell {
         "sh"
     }
 
-    fn nix_packages(&self) ->  &'static[&'static str] {
+    fn nix_packages(&self) -> &'static [&'static str] {
         &[]
     }
 }
