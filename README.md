@@ -23,22 +23,14 @@ And, if you have [`nix`](https://nixos.org/) installed, `run` will fetch the nec
 ## Languages
 `run` supports the following languages, with their respective command indicators:
 
-- [Rust](https://www.rust-lang.org/)
-  - `rust | rs`
-- [Python](https://www.python.org/)
-  - `python | py`
-- [Javascript](https://nodejs.org/)
-  - `javascript | js`
-- [Shell](https://en.wikipedia.org/wiki/Shell_script)
-  - `shell | sh`
-- [Bash](https://en.wikipedia.org/wiki/Bash_(Unix_shell))
-  - `bash`
-- [C#](https://docs.microsoft.com/en-us/dotnet/csharp/)
-  - `csharp | cs | c#`
-- [C](https://en.wikipedia.org/wiki/C_(programming_language))
-  - `c`
-- [C++](https://en.wikipedia.org/wiki/C%2B%2B)
-  - `cplusplus | cpp | c++`
+- [Rust](https://www.rust-lang.org/): `rust | rs`
+- [Python](https://www.python.org/): `python | py`
+- [Javascript](https://nodejs.org/): `javascript | js`
+- [Shell](https://en.wikipedia.org/wiki/Shell_script): `shell | sh`
+- [Bash](https://en.wikipedia.org/wiki/Bash_(Unix_shell)): `bash`
+- [C#](https://docs.microsoft.com/en-us/dotnet/csharp/): `csharp | cs | c#`
+- [C](https://en.wikipedia.org/wiki/C_(programming_language)): `c`
+- [C++](https://en.wikipedia.org/wiki/C%2B%2B): `cplusplus | cpp | c++`
 
 If you want a language to be added, please open an issue or a pull request!
 
