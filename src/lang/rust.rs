@@ -7,7 +7,7 @@ pub struct Rust;
 
 impl super::Language for Rust {
     fn as_str(&self) -> &'static str {
-        "rust"
+        "rs"
     }
 
     fn binary(&self) -> &'static str {
