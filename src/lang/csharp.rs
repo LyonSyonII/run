@@ -3,7 +3,7 @@ pub struct CSharp;
 
 impl super::Language for CSharp {
     fn as_str(&self) -> &'static str {
-        "csharp"
+        "c#"
     }
 
     fn binary(&self) -> &'static str {

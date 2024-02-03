@@ -1,7 +1,7 @@
 [package]
 name = "runfile"
 description = "Run commands in the languages you love!"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 authors = ["Liam Garriga <liam@garriga.dev>"]
 repository = "https://github.com/lyonsyonii/run"
@@ -18,9 +18,9 @@ peg = "0.8.2"                                                                   
 ariadne = "0.4.0"                                                               # Better parser error reports
 yansi = { version = "1.0.0-rc.1", features = ["detect-tty", "detect-env"] }     # Colorize output (no alloc)
 aho-corasick = "1.1.2"                                                          # Fast string replace (used in variable replacement)
-beef = { version = "0.5.2", features = ["const_fn"] }                           # Slimmer Cow<str>
-read_pipe = "0.1.2"                                                             # Detect if runfile is being piped into
-clap_complete = { version = "4.4.10" }                                           # Generate completions for CLI
+beef = { version = "0.5.2" }                                                    # Slimmer Cow<str>
+read_pipe = "0.2.0"                                                             # Detect if runfile is being piped into
+clap_complete = { version = "4.4.10" }                                          # Generate completions for CLI
 clap = { version = "4.4.18", default-features = false, features = ["string"] }  # Needed for clap_complete
 which = "6.0.0"                                                                 # Find executables in PATH
 indexmap = { version = "2.2.2" }                                                # Keep order of commands as written in runfile
@@ -54,7 +54,7 @@ cargo-dist-version = "0.8.2"
 # CI backends to support
 ci = ["github"]
 # The installers to generate for each app
-installers = ["shell", "homebrew"]
+installers = ["shell"]
 # Target platforms to build apps for (Rust target-triple syntax)
 targets = ["aarch64-apple-darwin", "x86_64-apple-darwin", "x86_64-unknown-linux-gnu"]
 # Publish jobs to run in CI

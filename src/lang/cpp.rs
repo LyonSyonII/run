@@ -7,7 +7,7 @@ pub struct Cpp;
 
 impl super::Language for Cpp {
     fn as_str(&self) -> &'static str {
-        "cpp"
+        "c++"
     }
 
     fn binary(&self) -> &'static str {
