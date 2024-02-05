@@ -15,7 +15,7 @@ impl super::Language for Rust {
     }
 
     fn nix_packages(&self) -> &'static [&'static str] {
-        &["rustc"]
+        &[BINARY, "gcc"]
     }
 
     fn installed(&self) -> bool {
@@ -26,7 +26,7 @@ impl super::Language for Rust {
         which::which(BINARY)
             .map(std::process::Command::new)
             .map_err(|error| super::exe_not_found(BINARY, error))
-            .or_else(|error| crate::nix::nix_shell([BINARY, "gcc"], BINARY).ok_or(error))
+            .or_else(|error| crate::nix::nix_shell(self.nix_packages(), BINARY).ok_or(error))
     }
 
     fn execute(&self, input: &str, args: impl AsRef<[String]>) -> Result<(), Str<'_>> {
