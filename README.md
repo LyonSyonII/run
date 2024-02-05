@@ -32,7 +32,7 @@ And, if you have [`nix`](https://nixos.org/) installed, `run` will fetch the nec
 - [C](https://en.wikipedia.org/wiki/C_(programming_language)): `c`
 - [C++](https://en.wikipedia.org/wiki/C%2B%2B): `cplusplus | cpp | c++`
 
-If you want a language to be added, please open an issue or a pull request!
+If you want a language to be added, please open an issue or a pull request following the steps in [CONTRIBUTE.md](CONTRIBUTE.md).
 
 ## Installation
 Download the latest installer from the [releases page](https://github.com/LyonSyonII/run/releases).
@@ -64,6 +64,10 @@ If you want to see the available commands run `run --commands`, or `run --help` 
 ![Example](assets/example.png)
 
 See the `runfile` in the screenshot [here](examples/runfile.run).
+
+## Contributing
+Contributions are welcome!
+If you want to add a new language, follow the steps in [CONTRIBUTE.md](CONTRIBUTE.md).
 
 ## License
 This project is licensed under the [GPL-3.0](LICENSE) license.

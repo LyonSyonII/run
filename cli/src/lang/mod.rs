@@ -111,6 +111,7 @@ fn wait_for_child(mut child: std::process::Child) -> Result<(), Str<'static>> {
     }
 }
 
+/// Creates a `std::process::Command` for the first program found in the PATH or in the Nix shell.
 fn program_with_alternatives(programs: &[&'static str], nix_packages: &[&'static str]) -> Result<std::process::Command, Str<'static>> {
     programs
     .iter()
