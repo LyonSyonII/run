@@ -52,10 +52,11 @@ pub trait Language {
     }
 }
 
-pub(crate) fn exe_not_found(exe: &str, error: which::Error) -> Str<'_> {
+fn exe_not_found(exe: impl AsRef<str>, error: which::Error) -> Str<'static> {
+    let exe = exe.as_ref();
     let purple = yansi::Color::BrightMagenta.bold();
     let not_found =
-        "executable could not be found.\nDo you have it installed and in the PATH?\n\nRun '";
+        "could not be found.\nDo you have it installed and in the PATH?\n\nRun '";
     let run = "run --commands".bright_cyan().bold();
     let for_more = "' for more information.".paint(purple);
     let error = format!(
@@ -65,7 +66,15 @@ pub(crate) fn exe_not_found(exe: &str, error: which::Error) -> Str<'_> {
     Str::from(error)
 }
 
-pub(crate) fn execution_failed(
+fn installed_any(binaries: impl AsRef<[&'static str]>) -> bool {
+    binaries.as_ref().iter().any(|&binary| which::which(binary).is_ok())
+}
+
+fn installed_all(binaries: impl AsRef<[&'static str]>) -> bool {
+    binaries.as_ref().iter().all(|&binary| which::which(binary).is_ok())
+}
+
+fn execution_failed(
     exe: impl std::fmt::Display,
     error: impl std::fmt::Display,
 ) -> Str<'static> {
@@ -102,6 +111,19 @@ fn wait_for_child(mut child: std::process::Child) -> Result<(), Str<'static>> {
     }
 }
 
+/// Creates a `std::process::Command` for the first program found in the PATH or in the Nix shell.
+fn program_with_alternatives(programs: &[&'static str], nix_packages: &[&'static str]) -> Result<std::process::Command, Str<'static>> {
+    programs
+    .iter()
+    .find_map(|binary| which::which(binary).ok())
+    .map(std::process::Command::new)
+    .ok_or(exe_not_found(
+        crate::fmt::strlist::StrList::from((" or ", programs.iter().copied())).to_string(),
+        which::Error::CannotFindBinaryPath,
+    ))
+    .or_else(|error| crate::nix::nix_shell(nix_packages, programs[0]).ok_or(error))
+}
+
 /// Runs the given program with only one argument consisting in a file containing the input.
 ///
 /// ```
@@ -126,6 +148,9 @@ fn execute_interpreted(
     wait_for_child(child)
 }
 
+/// Creates a project directory and writes the input to the main file.
+///
+/// If `init` is provided, it will be executed in the project directory before writing the input.
 fn create_project(
     name: &str,
     init: Option<&mut std::process::Command>,
@@ -159,6 +184,22 @@ fn create_project(
     Ok(path)
 }
 
+/// Creates the project directory, compiles and runs the specified input.
+///
+/// Use in the implementation of `Language::execute`.
+/// # Example
+/// ```rust
+/// let lang = "rust";
+/// let proj_main = "src/main.rs";
+/// let input = "fn main() { dbg!(3 + 3) }";
+/// let args = [];
+/// let init = Some(
+///     self.program()?.args(["init", "--name", "runfile"])
+/// );
+/// let compile = self.program()?.args(["build", "--color", "always"]);
+/// let run = self.program()?.args(["run", "-q", "--"]);
+/// execute_compiled(lang, proj_main, input, args, init, compile, run)
+/// ```
 fn execute_compiled(
     lang: &str,
     proj_main: impl AsRef<std::path::Path>,

@@ -36,7 +36,9 @@
     - [] Nuget dependencies?
 
 ## Documentation
-- [] Add basic README with at least a copy of the --help menu
+- [] Add possible arguments to README
+- [] Add examples to README
+- [x] Specify that -f must be the first argument
 
 
 ## Experimentation

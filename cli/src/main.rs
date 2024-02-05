@@ -97,17 +97,17 @@ fn print_help() {
         "{} {} {}\n",
         "Usage:".bright_green().bold(),
         "run".bright_cyan().bold(),
-        "[COMMAND] [ARGS...]".cyan()
+        "[-f <FILE>] [COMMAND] [ARGS...]".cyan()
     );
     println!("{}", "Options:".bright_green().bold());
     println!(
-        "  {}, {} {}\tRuns the specified file instead of searching for a runfile",
+        "  {}, {} {}\tRuns the specified file instead of searching for a runfile\n\t\t\tIt must be the FIRST argument",
         "-f".bright_cyan().bold(),
         "--file".bright_cyan().bold(),
         "<FILE>".cyan()
     );
     println!(
-        "  {}, {}\tPrints available commands in the runfile",
+        "  {}, {}\tPrints available commands in the runfile or subcommand",
         "-c".bright_cyan().bold(),
         "--commands".bright_cyan().bold()
     );

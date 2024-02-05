@@ -44,6 +44,7 @@ pub fn nix_shell(
 ) -> Option<std::process::Command> {
     let packages = packages.as_ref();
     let nix = get_nix()?;
+    // TODO: Does not work as expected, when there's an update the package is in store but it still takes a while
     let first_time = !is_in_store(packages);
 
     if is_flakes(&nix) {

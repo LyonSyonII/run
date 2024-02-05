@@ -1,5 +1,5 @@
-/target
+**/target
 **/node_modules
-.direnv
+**/.direnv
 !tests/stress/run
 tests/stress

@@ -19,19 +19,11 @@ impl super::Language for Cpp {
     }
 
     fn installed(&self) -> bool {
-        BINARIES.iter().any(|&binary| which::which(binary).is_ok())
+        super::installed_any(BINARIES)
     }
 
     fn program(&self) -> Result<std::process::Command, Str<'static>> {
-        BINARIES
-            .iter()
-            .find_map(|binary| which::which(binary).ok())
-            .map(std::process::Command::new)
-            .ok_or(super::exe_not_found(
-                "g++ or clang",
-                which::Error::CannotFindBinaryPath,
-            ))
-            .or_else(|error| crate::nix::nix_shell(["gcc"], "g++").ok_or(error))
+        super::program_with_alternatives(BINARIES, self.nix_packages())
     }
 
     fn execute(&self, input: &str, args: impl AsRef<[String]>) -> Result<(), Str<'_>> {

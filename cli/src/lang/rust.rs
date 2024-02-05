@@ -15,18 +15,11 @@ impl super::Language for Rust {
     }
 
     fn nix_packages(&self) -> &'static [&'static str] {
-        &["rustc"]
+        &[BINARY, "gcc"]
     }
 
     fn installed(&self) -> bool {
-        which::which(BINARY).and(which::which("rustc")).is_ok()
-    }
-
-    fn program(&self) -> Result<std::process::Command, Str<'static>> {
-        which::which(BINARY)
-            .map(std::process::Command::new)
-            .map_err(|error| super::exe_not_found(BINARY, error))
-            .or_else(|error| crate::nix::nix_shell([BINARY, "gcc"], BINARY).ok_or(error))
+        super::installed_all([BINARY, "rustc"])
     }
 
     fn execute(&self, input: &str, args: impl AsRef<[String]>) -> Result<(), Str<'_>> {
