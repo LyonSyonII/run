@@ -70,6 +70,7 @@ jobs:
       # but also really annoying to build CI around when it needs secrets to work right.)
       - id: plan
         run: |
+          cd cli # ADDED
           cargo dist ${{ (!github.event.pull_request && format('host --steps=create --tag={0}', github.ref_name)) || 'plan' }} --output-format=json > dist-manifest.json
           echo "cargo dist ran successfully"
           cat dist-manifest.json
@@ -123,6 +124,7 @@ jobs:
       - name: Build artifacts
         run: |
           # Actually do builds and make zips and whatnot
+          cd cli # ADDED
           cargo dist build ${{ needs.plan.outputs.tag-flag }} --print=linkage --output-format=json ${{ matrix.dist_args }} > dist-manifest.json
           echo "cargo dist ran successfully"
       - id: cargo-dist
@@ -170,6 +172,7 @@ jobs:
       - id: cargo-dist
         shell: bash
         run: |
+          cd cli # ADDED
           cargo dist build ${{ needs.plan.outputs.tag-flag }} --output-format=json "--artifacts=global" > dist-manifest.json
           echo "cargo dist ran successfully"
 
@@ -215,6 +218,7 @@ jobs:
       - id: host
         shell: bash
         run: |
+          cd cli # ADDED
           cargo dist host ${{ needs.plan.outputs.tag-flag }} --steps=upload --steps=release --output-format=json > dist-manifest.json
           echo "artifacts uploaded and released successfully"
           cat dist-manifest.json
