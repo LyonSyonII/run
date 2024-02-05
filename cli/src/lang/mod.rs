@@ -52,7 +52,7 @@ pub trait Language {
     }
 }
 
-pub(crate) fn exe_not_found(exe: impl AsRef<str>, error: which::Error) -> Str<'static> {
+fn exe_not_found(exe: impl AsRef<str>, error: which::Error) -> Str<'static> {
     let exe = exe.as_ref();
     let purple = yansi::Color::BrightMagenta.bold();
     let not_found =
@@ -66,7 +66,15 @@ pub(crate) fn exe_not_found(exe: impl AsRef<str>, error: which::Error) -> Str<'s
     Str::from(error)
 }
 
-pub(crate) fn execution_failed(
+fn installed_any(binaries: impl AsRef<[&'static str]>) -> bool {
+    binaries.as_ref().iter().any(|&binary| which::which(binary).is_ok())
+}
+
+fn installed_all(binaries: impl AsRef<[&'static str]>) -> bool {
+    binaries.as_ref().iter().all(|&binary| which::which(binary).is_ok())
+}
+
+fn execution_failed(
     exe: impl std::fmt::Display,
     error: impl std::fmt::Display,
 ) -> Str<'static> {
