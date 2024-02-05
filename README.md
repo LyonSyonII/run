@@ -63,7 +63,7 @@ If you want to see the available commands run `run --commands`, or `run --help` 
 ### How to write a `runfile`
 ![Example](assets/example.png)
 
-See the `runfile` in the screenshot [here](runfile.run).
+See the `runfile` in the screenshot [here](examples/runfile.run).
 
 ## License
 This project is licensed under the [GPL-3.0](LICENSE) license.
