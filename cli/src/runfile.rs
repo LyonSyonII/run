@@ -181,11 +181,14 @@ impl<'i> Runfile<'i> {
 
     pub fn run<'a>(
         &'a self,
+        path: &std::path::Path,
         parents: impl Into<StrList<'a>>,
         args: &'a [String],
     ) -> Result<(), Str<'a>> {
         let parents = parents.into();
 
+        std::env::set_current_dir(path).map_err(|e| Str::from(e.to_string()))?;
+        
         let first = args.first();
         // Needed for subcommands
         if first.is_some_and_oneof(["-h", "--help"]) {
@@ -209,7 +212,7 @@ impl<'i> Runfile<'i> {
             String::from_utf8(buf).map_err(|e| e.to_string())
         };
 
-        let default = || {
+        let default = |args| {
             let Some(cmd) = self.commands.get("default") else {
                 self.print_help(
                     Some(
@@ -228,8 +231,11 @@ impl<'i> Runfile<'i> {
         };
 
         let Some(first) = first.map(String::as_str) else {
-            return default();
+            return default(args);
         };
+        if first == "--" {
+            return default(args.get(1..).unwrap_or_default());
+        }
 
         if let Some(cmd) = self.commands.get(first) {
             cmd.run(
@@ -240,15 +246,20 @@ impl<'i> Runfile<'i> {
             )
             .map_err(|e| f!("Command execution failed: {}", e).into())
         } else if let Some(sub) = self.subcommands.get(first) {
-            sub.run(parents.append(first), args.get(1..).unwrap_or_default())
+            sub.run(
+                path,
+                parents.append(first),
+                args.get(1..).unwrap_or_default(),
+            )
         } else if self
             .commands
             .get("default")
             .is_some_and(|d| d.args().is_empty())
         {
+            let meant = "If you meant to run the default command with extra arguments, use '--' before the arguments:\nrun --".white().dim().linger();
             self.print_help(
                 Some(
-                    format_args!("Error: Could not find command or subcommand '{}'\n", first)
+                    format_args!("Error: Could not find command or subcommand '{}'\n{meant} {}", first, StrList::from((" ", args.iter().map(String::as_str))).clear())
                         .bright_red()
                         .bold(),
                 ),
@@ -257,7 +268,7 @@ impl<'i> Runfile<'i> {
             )?;
             std::process::exit(1);
         } else {
-            default()
+            default(args)
         }
     }
 }

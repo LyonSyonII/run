@@ -60,6 +60,8 @@ The possible names for the `runfile` are: `run`, `runfile` or any file with the 
 
 If you want to see the available commands run `run --commands`, or `run --help` for more information.
 
+To run the `default` command with extra arguments, use `run -- [ARGS...]`
+
 ### How to write a `runfile`
 ![Example](assets/example.png)
 

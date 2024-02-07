@@ -73,7 +73,9 @@ fn main() -> std::io::Result<()> {
         }
     };
 
-    runfile.run((" ", [get_current_exe()?]), &args).unwrap();
+    runfile
+        .run(path, (" ", [get_current_exe()?]), &args)
+        .unwrap();
 
     Ok(())
 }
@@ -153,31 +155,29 @@ fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
     }
 
     if first.is_some_and_oneof(["-f", "--file"]) {
-        let file = args.get(1);
-        if let Some(file) = file {
-            if let Ok(contents) = std::fs::read_to_string(file) {
-                let file = file.to_owned().into();
-                // Remove -f and the file name from args
-                args.drain(..=1);
-                return (file, contents);
-            }
+        let Some(file) = args.get(1) else {
+            eprintln!(
+                "{}\n{} {} {}",
+                "Error: No file specified".bright_red().bold(),
+                "Usage:".bright_green().bold(),
+                "run --file <FILE>".bright_cyan().bold(),
+                "[COMMAND] [ARGS...]".cyan()
+            );
+            std::process::exit(1);
+        };
 
+        let Ok(contents) = std::fs::read_to_string(file) else {
             eprintln!(
                 "{}Error: Could not read file '{file}'{}",
                 "".bright_red().bold().linger(),
                 "".clear()
             );
             std::process::exit(1);
-        }
-
-        eprintln!(
-            "{}\n{} {} {}",
-            "Error: No file specified".bright_red().bold(),
-            "Usage:".bright_green().bold(),
-            "run --file <FILE>".bright_cyan().bold(),
-            "[COMMAND] [ARGS...]".cyan()
-        );
-        std::process::exit(1);
+        };
+        let file: Str = file.to_owned().into();
+        // Remove -f and the file name from args
+        args.drain(..=1);
+        return (file, contents);
     }
 
     let files = [

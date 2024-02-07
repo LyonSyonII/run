@@ -100,6 +100,8 @@ cmd args(name age) {
 }
 
 // You can read other arguments from the environment (argv in C)
+// To call the 'default' command with extra arguments use the -- syntax
+// Eg: run -- arg1 arg2
 /// Try calling me with more than one argument!
 rs cmd extra-args(first) {
   println!("The first explicit{{}} argument is $first");

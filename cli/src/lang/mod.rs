@@ -42,7 +42,7 @@ pub trait Language {
     fn binary(&self) -> &'static str;
     fn nix_packages(&self) -> &'static [&'static str];
     fn execute(&self, input: &str, args: impl AsRef<[String]>) -> Result<(), Str<'_>> {
-        execute_interpreted(self.program()?, input, args)
+        execute_interpreted(self.as_str(), self.program()?, input, args)
     }
     fn installed(&self) -> bool {
         which::which(self.binary()).is_ok()
@@ -93,11 +93,12 @@ fn execution_failed(exe: impl std::fmt::Display, error: impl std::fmt::Display) 
 
 fn write_to_tmp(dir: &str, input: &str) -> Result<std::path::PathBuf, Str<'static>> {
     let to_error = |e: std::io::Error| Str::from(e.to_string());
-
+    
     // Write to file to allow inheriting stdin
     let file = std::env::temp_dir().join("run/").join(dir);
     std::fs::create_dir_all(&file).map_err(to_error)?;
-    let file = file.join("input");
+    let name = format!("{:x}", md5::compute(input));
+    let file = file.join(name);
     std::fs::write(&file, input).map_err(to_error)?;
     Ok(file)
 }
@@ -142,17 +143,18 @@ fn program_with_alternatives(
 /// echo "print('Hello')" > /tmp/run/input && python /tmp/run/input
 /// ```
 fn execute_interpreted(
+    dir: &str,
     mut program: std::process::Command,
     input: &str,
     args: impl AsRef<[String]>,
 ) -> Result<(), Str<'static>> {
-    let name = format!("{:?}", program.get_program());
-    let file = write_to_tmp("input", input).unwrap();
+    let args = args.as_ref();
+    let file = write_to_tmp(dir, input).unwrap();
     let child = program
         .arg(file)
-        .args(args.as_ref())
+        .args(args)
         .spawn()
-        .map_err(|error| execution_failed(name, error))?;
+        .map_err(|error| execution_failed(format_args!("{:?}", program.get_program()), error))?;
     wait_for_child(child)
 }
 
