@@ -6,6 +6,7 @@ mod javascript;
 mod python;
 mod rust;
 mod shell;
+mod dart;
 
 pub use bash::Bash;
 pub use c::C;
@@ -15,6 +16,7 @@ pub use javascript::Javascript;
 pub use python::Python;
 pub use rust::Rust;
 pub use shell::Shell;
+pub use dart::Dart;
 
 use yansi::Paint as _;
 
@@ -31,6 +33,7 @@ pub enum Lang {
     C,
     Cpp,
     CSharp,
+    Dart
 }
 
 #[enum_dispatch::enum_dispatch(Lang)]
@@ -243,6 +246,7 @@ impl std::str::FromStr for Lang {
             "c#" | "cs" | "csharp" => Ok(CSharp.into()),
             "py" | "python" => Ok(Python.into()),
             "js" | "javascript" => Ok(Javascript.into()),
+            "dart" => Ok(Dart.into()),
             _ => Err(s.to_owned()),
         }
     }
