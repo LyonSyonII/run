@@ -2,21 +2,21 @@ mod bash;
 mod c;
 mod cpp;
 mod csharp;
+mod dart;
 mod javascript;
 mod python;
 mod rust;
 mod shell;
-mod dart;
 
 pub use bash::Bash;
 pub use c::C;
 pub use cpp::Cpp;
 pub use csharp::CSharp;
+pub use dart::Dart;
 pub use javascript::Javascript;
 pub use python::Python;
 pub use rust::Rust;
 pub use shell::Shell;
-pub use dart::Dart;
 
 use yansi::Paint as _;
 
@@ -33,7 +33,7 @@ pub enum Lang {
     C,
     Cpp,
     CSharp,
-    Dart
+    Dart,
 }
 
 #[enum_dispatch::enum_dispatch(Lang)]
@@ -58,8 +58,7 @@ pub trait Language {
 fn exe_not_found(exe: impl AsRef<str>, error: which::Error) -> Str<'static> {
     let exe = exe.as_ref();
     let purple = yansi::Color::BrightMagenta.bold();
-    let not_found =
-        "could not be found.\nDo you have it installed and in the PATH?\n\nRun '";
+    let not_found = "could not be found.\nDo you have it installed and in the PATH?\n\nRun '";
     let run = "run --commands".bright_cyan().bold();
     let for_more = "' for more information.".paint(purple);
     let error = format!(
@@ -70,17 +69,20 @@ fn exe_not_found(exe: impl AsRef<str>, error: which::Error) -> Str<'static> {
 }
 
 fn installed_any(binaries: impl AsRef<[&'static str]>) -> bool {
-    binaries.as_ref().iter().any(|&binary| which::which(binary).is_ok())
+    binaries
+        .as_ref()
+        .iter()
+        .any(|&binary| which::which(binary).is_ok())
 }
 
 fn installed_all(binaries: impl AsRef<[&'static str]>) -> bool {
-    binaries.as_ref().iter().all(|&binary| which::which(binary).is_ok())
+    binaries
+        .as_ref()
+        .iter()
+        .all(|&binary| which::which(binary).is_ok())
 }
 
-fn execution_failed(
-    exe: impl std::fmt::Display,
-    error: impl std::fmt::Display,
-) -> Str<'static> {
+fn execution_failed(exe: impl std::fmt::Display, error: impl std::fmt::Display) -> Str<'static> {
     let error = format!(
         "{}'{exe}' failed to execute command{}\n\nComplete error: {error}",
         "".bright_magenta().bold().linger(),
@@ -115,16 +117,19 @@ fn wait_for_child(mut child: std::process::Child) -> Result<(), Str<'static>> {
 }
 
 /// Creates a `std::process::Command` for the first program found in the PATH or in the Nix shell.
-fn program_with_alternatives(programs: &[&'static str], nix_packages: &[&'static str]) -> Result<std::process::Command, Str<'static>> {
+fn program_with_alternatives(
+    programs: &[&'static str],
+    nix_packages: &[&'static str],
+) -> Result<std::process::Command, Str<'static>> {
     programs
-    .iter()
-    .find_map(|binary| which::which(binary).ok())
-    .map(std::process::Command::new)
-    .ok_or(exe_not_found(
-        crate::fmt::strlist::StrList::from((" or ", programs.iter().copied())).to_string(),
-        which::Error::CannotFindBinaryPath,
-    ))
-    .or_else(|error| crate::nix::nix_shell(nix_packages, programs[0]).ok_or(error))
+        .iter()
+        .find_map(|binary| which::which(binary).ok())
+        .map(std::process::Command::new)
+        .ok_or(exe_not_found(
+            crate::fmt::strlist::StrList::from((" or ", programs.iter().copied())).to_string(),
+            which::Error::CannotFindBinaryPath,
+        ))
+        .or_else(|error| crate::nix::nix_shell(nix_packages, programs[0]).ok_or(error))
 }
 
 /// Runs the given program with only one argument consisting in a file containing the input.
