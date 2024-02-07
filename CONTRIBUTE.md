@@ -31,7 +31,7 @@ If you don't know Rust and want to request a new language, you can do so by crea
 
 ### Pull Request
 If you know Rust and want to add a new language, you can do so by following these steps:
-- Clone the repository `git clone https://github.com/lyonsyonii/run`
+- Clone the repository `git clone https://github.com/lyonsyonii/run -b dev`
 - Create a new branch `git checkout -b add-lang-LANGUAGE`
 - Go to `cli/src/lang/` and create a new file `LANGUAGE.rs`
 - Copy the following code into the file and replace as necessary:
