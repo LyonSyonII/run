@@ -56,6 +56,7 @@ js cmd javascript(name) {
 
 // Not only interpreted languages are supported, you can also use compiled languages
 // These get compiled when the specific command is called for the first time
+// Rust commands will be wrapped in "fn main {}" for convenience
 /// Rust command
 rs cmd rust(name) {
   println!("Hello $name from Rust!");
@@ -80,8 +81,15 @@ c++ cmd cpp(name) {
   }
 }
 
+/// C# command
 c# cmd csharp(name) {
   Console.WriteLine("Hello $name from C#!");
+}
+
+// Dart commands will be wrapped in "fn main {}" for convenience
+/// Dart command
+dart cmd dart(name) {
+  print("Hello $name from Dart!");
 }
 
 // Multiple arguments are separated by spaces
