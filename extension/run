@@ -1,0 +1,14 @@
+/// Packages and installs the extension
+cmd default() {
+  pnpm vsce package && code --install-extension runfile-0.0.1.vsix
+}
+
+/// Packages the extension without installing it
+cmd package() {
+  pnpm vsce package
+}
+
+/// Installs the packaged extension
+cmd install() {
+  code --install-extension runfile-0.0.1.vsix
+}

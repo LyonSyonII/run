@@ -1,0 +1,3 @@
+cmd default() {
+  cargo run -q -- -f ../examples/runfile.run $@
+}

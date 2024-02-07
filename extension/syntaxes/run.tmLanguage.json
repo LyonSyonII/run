@@ -231,6 +231,19 @@
                     ]
                 },
                 {
+                    "begin": "\\b(dart).*\\b(cmd)\\b\\s+([^\\s]+)\\s*(\\(.*\\))\\s*\\{",
+                    "end": "(?<=\\})",
+                    "beginCaptures": {
+                        "1": { "name": "entity.name.class.run" },
+                        "2": { "name": "keyword.command.run" },
+                        "3": { "name": "entity.name.function.run" },
+                        "4": { "name": "variable.parameter.run" }
+                    },
+                    "patterns": [
+                        { "include": "source.dart" }
+                    ]
+                },
+                {
                     "begin": "\\b(c)\\b",
                     "end": "(?<=})",
                     "beginCaptures": {
