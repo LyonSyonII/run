@@ -259,9 +259,13 @@ impl<'i> Runfile<'i> {
             let meant = "If you meant to run the default command with extra arguments, use '--' before the arguments:\nrun --".white().dim().linger();
             self.print_help(
                 Some(
-                    format_args!("Error: Could not find command or subcommand '{}'\n{meant} {}", first, StrList::from((" ", args.iter().map(String::as_str))).clear())
-                        .bright_red()
-                        .bold(),
+                    format_args!(
+                        "Error: Could not find command or subcommand '{}'\n{meant} {}",
+                        first,
+                        StrList::from((" ", args.iter().map(String::as_str))).clear()
+                    )
+                    .bright_red()
+                    .bold(),
                 ),
                 parents.as_slice(),
                 &mut std::io::stderr(),

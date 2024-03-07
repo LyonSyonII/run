@@ -39,6 +39,7 @@
 - [x] Fix `run -- <ARGS>` to passthrough arguments to the command when the default command
      does not have any arguments
         - [x] Command output is being piped into "/tmp/run/input/input"
+- [ ] Constants defined in supermodules are not being used in submodules
 
 ## Documentation
 - [] Add possible arguments to README

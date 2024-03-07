@@ -150,11 +150,10 @@ fn execute_interpreted(
 ) -> Result<(), Str<'static>> {
     let args = args.as_ref();
     let file = write_to_tmp(dir, input).unwrap();
-    let child = program
-        .arg(file)
-        .args(args)
-        .spawn()
-        .map_err(|error| execution_failed(format_args!("{:?}", program.get_program()), error))?;
+    let child =
+        program.arg(file).args(args).spawn().map_err(|error| {
+            execution_failed(format_args!("{:?}", program.get_program()), error)
+        })?;
     wait_for_child(child)
 }
 
