@@ -211,7 +211,7 @@ impl<'i> Runfile<'i> {
                 .unwrap_or_default();
             String::from_utf8(buf).map_err(|e| e.to_string())
         };
-
+        
         let default = |args| {
             let Some(cmd) = self.commands.get("default") else {
                 self.print_help(
@@ -225,9 +225,9 @@ impl<'i> Runfile<'i> {
                 )?;
                 return Ok(());
             };
-            return cmd
-                .run(parents.as_slice(), args, &self.vars, runfile_docs()?)
-                .map_err(|e| f!("Command execution failed: {}", e).into());
+            cmd
+                .run(self.commands.as_slice(), parents.as_slice(), args, &self.vars, runfile_docs()?)
+                .map_err(|e| f!("Command execution failed: {}", e).into())
         };
 
         let Some(first) = first.map(String::as_str) else {
@@ -239,6 +239,7 @@ impl<'i> Runfile<'i> {
 
         if let Some(cmd) = self.commands.get(first) {
             cmd.run(
+                self.commands.as_slice(),
                 parents.as_slice(),
                 args.get(1..).unwrap_or_default(),
                 &self.vars,

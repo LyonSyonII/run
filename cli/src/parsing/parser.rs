@@ -47,10 +47,7 @@ peg::parser! {
                 (false, false) => Ok(v)
             }
         }
-        pub rule body_start() -> usize = s:$['{']+ { s.len() } /*
-        } / start:pos() end:pos() {
-            Error::PExpectedBodyStart(start, end).err()
-        } */
+        pub rule body_start() -> usize = s:$['{']+ { s.len() }
         pub rule body_end(count: usize) = ['}']*<{count}>
         pub rule body(count: usize) -> &'input str = $((!(['{'|'}']*<{count}>)[_] / "{"*<1, {(count-1).max(1)}> body((count-1).max(1)) "}"*<1, {(count-1).max(1)}>)*)               // TODO: Remove this atrocity
         pub rule command() -> Element<'input> = __ doc:doc() __ lang:language() __ name:name() __ args:arguments() __ count:body_start() script:body(count) body_end(count) __ {
@@ -68,7 +65,6 @@ peg::parser! {
             let lang = unwrap(lang, crate::lang::Shell.into(), &mut errors);
             let name = unwrap(name, "", &mut errors);
             let args = unwrap(args, Vec::new(), &mut errors);
-            // unwrap(count, 0, &mut errors);
 
             if errors.is_empty() {
                 let command = Command::new(name, doc, lang, args, script);
@@ -85,7 +81,7 @@ peg::parser! {
         }
 
         pub rule include(dir: &std::path::Path) -> Element<'input> = __ "in" __ start:pos() name:($([^'\n']+)) end:pos() __ {
-            // TODO: Remove leak (should not impact a lot, the string will need to be alive the whole program anyway)
+            // TODO: Remove leak (should not impact a lot, the string would need to be alive the whole program anyway)
             let path = {
                 if name.starts_with('/') {
                     std::path::PathBuf::from(name)
@@ -186,6 +182,10 @@ peg::parser!( grammar arithmetic() for str {
 
     rule number() -> f64
         = n:$(['0'..='9']+"."?['0'..='9']* / ['0'..='9']*"."?['0'..='9']+) { n.parse().unwrap() }
+});
+
+peg::parser!( grammar command() for str {
+    rule command_call() -> Result<(usize, usize), Error> = $(ident() [' ' | '\t' | '\n' | '\r']*)
 });
 
 impl From<Error> for Element<'_> {

@@ -103,8 +103,9 @@ impl<'i> Command<'i> {
         script.map(|l| &l[indent..]).collect::<Vec<_>>().join("\n")
     }
 
-    pub fn run(
+    pub fn run<'a>(
         &self,
+        commands: &'a indexmap::map::Slice<&'i str, Command<'i>>,
         parents: StrListSlice,
         args: impl AsRef<[String]>,
         vars: impl AsRef<[(&'i str, Str<'i>)]>,
@@ -145,6 +146,7 @@ impl<'i> Command<'i> {
             runfile_docs,
             self.doc(parents).to_string(),
             self.usage(parents, Color::White, 0),
+            commands
         );
         let args = args.get(self.args.len()..).unwrap_or(&[]);
         // Run the script
@@ -163,13 +165,14 @@ impl<'i> Command<'i> {
     }
 }
 
-fn replace_all(
+fn replace_all<'i, 'a: 'i>(
     script: String,
     args: (&[&str], &[String]),
     vars: &[(&str, Str<'_>)],
     runfile_docs: String,
     doc: String,
     usage: String,
+    commands: &'a indexmap::map::Slice<&'i str, Command<'i>>,
 ) -> String {
     // Replace arguments
     type Bytes<'a> = beef::lean::Cow<'a, [u8]>;
@@ -181,7 +184,7 @@ fn replace_all(
         let ac = aho_corasick::AhoCorasick::new(patterns).unwrap();
         ac.replace_all(v, &replace_with).into()
     });
-
+    
     let args_names = args
         .0
         .iter()
@@ -204,7 +207,16 @@ fn replace_all(
         .match_kind(aho_corasick::MatchKind::LeftmostLongest)
         .build(patterns)
         .unwrap();
-    ac.replace_all(&script, &replace_with.collect::<Vec<_>>())
+    ac.replace_all(&script, &replace_with.collect::<Vec<_>>())/* ;
+    
+    let ac = aho_corasick::AhoCorasick::builder()
+        .match_kind(aho_corasick::MatchKind::LeftmostLongest)
+        .build(commands.iter().map(|(n, _)| Bytes::owned(fmt!("${n}").into_bytes())))
+        .unwrap();
+    let mut result = String::new();
+    ac.replace_all_with(&script, &mut result, |mat, mattxt, dst| {
+        println!("{:?} {:?}", mat, mattxt);
+    }); */
 }
 
 impl PartialEq for Command<'_> {
