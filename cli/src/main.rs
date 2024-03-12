@@ -74,7 +74,7 @@ fn main() -> std::io::Result<()> {
     };
 
     runfile
-        .run(Some(path), (" ", [get_current_exe()?]), &args)
+        .run(Some(path), (" ", [get_current_exe()?]), &args, Vec::new())
         .expect("Error running runfile");
 
     Ok(())

@@ -88,10 +88,10 @@ impl<'i> Command<'i> {
         for l in lines.append(usage) {
             writeln!(to, "{:indent$}{l}", "")?;
         }
-
+        
         Ok(())
     }
-
+    
     pub fn script_with_indent_fix(&self) -> String {
         // Remove extra indentation from script
         let script = self.script.to_string();
@@ -102,22 +102,21 @@ impl<'i> Command<'i> {
             .unwrap_or(0);
         script.map(|l| &l[indent..]).collect::<Vec<_>>().join("\n")
     }
-
-    pub fn run(
-        &self,
+    
+    pub fn run<'a>(
+        &'a self,
         parents: StrListSlice,
         args: impl AsRef<[String]>,
-        vars: impl AsRef<[(&'i str, Str<'i>)]>,
+        vars: impl AsRef<[&'a (&'i str, Str<'i>)]>,
         runfile_docs: String,
     ) -> std::io::Result<()> {
         let args = args.as_ref();
-        let vars = vars.as_ref();
         let name = self.name;
         if args.iter().any(|a| a == "--help" || a == "-h") {
             self.print_help(parents, 0, &mut std::io::stdout())?;
             return Ok(());
         }
-
+        
         if args.len() < self.args.len() {
             let expected = StrList::from((
                 ", ",
@@ -136,7 +135,7 @@ impl<'i> Command<'i> {
             );
             std::process::exit(1);
         }
-
+        
         // Remove indentation from script
         let script = replace_all(
             self.script_with_indent_fix(),
@@ -158,24 +157,25 @@ impl<'i> Command<'i> {
             );
             eprintln!("{e}");
         }
-
+        
         Ok(())
     }
 }
 
-fn replace_all(
+fn replace_all<'a, 'i: 'a>(
     script: String,
     args: (&[&str], &[String]),
-    vars: &[(&str, Str<'_>)],
+    vars: impl AsRef<[&'a (&'i str, Str<'i>)]>,
     runfile_docs: String,
     doc: String,
     usage: String,
 ) -> String {
     // Replace arguments
-    type Bytes<'a> = beef::lean::Cow<'a, [u8]>;
-
-    let vars_names = vars.iter().map(|(n, _)| Bytes::owned(fmt!("${n}").into()));
-    let vars_values = vars.iter().map(|(_, v)| {
+    type Bytes<'i> = beef::lean::Cow<'i, [u8]>;
+    let vars = vars.as_ref();
+    
+    let vars_names = vars.into_iter().map(|(n, _)| Bytes::owned(fmt!("${n}").into()));
+    let vars_values = vars.into_iter().map(|(_, v)| {
         let patterns = ["\\n", "\\r", "\\t", "\\0", "\\\"", "\\'", "\\\\", "\\$"];
         let replace_with = ["\n", "\r", "\t", "\0", "\"", "'", "\\", "$"];
         let ac = aho_corasick::AhoCorasick::new(patterns).unwrap();
