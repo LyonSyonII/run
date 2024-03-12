@@ -181,13 +181,15 @@ impl<'i> Runfile<'i> {
 
     pub fn run<'a>(
         &'a self,
-        path: &std::path::Path,
+        path: Option<&std::path::Path>,
         parents: impl Into<StrList<'a>>,
         args: &'a [String],
     ) -> Result<(), Str<'a>> {
         let parents = parents.into();
-
-        std::env::set_current_dir(path).map_err(|e| Str::from(e.to_string()))?;
+        
+        if let Some(path) = path {
+            std::env::set_current_dir(path).map_err(|e| Str::from(e.to_string()))?;
+        }
         
         let first = args.first();
         // Needed for subcommands
@@ -247,7 +249,7 @@ impl<'i> Runfile<'i> {
             .map_err(|e| f!("Command execution failed: {}", e).into())
         } else if let Some(sub) = self.subcommands.get(first) {
             sub.run(
-                path,
+                None,
                 parents.append(first),
                 args.get(1..).unwrap_or_default(),
             )

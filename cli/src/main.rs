@@ -74,8 +74,8 @@ fn main() -> std::io::Result<()> {
     };
 
     runfile
-        .run(path, (" ", [get_current_exe()?]), &args)
-        .unwrap();
+        .run(Some(path), (" ", [get_current_exe()?]), &args)
+        .expect("Error running runfile");
 
     Ok(())
 }
