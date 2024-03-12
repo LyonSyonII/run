@@ -34,6 +34,7 @@
           nodejs
           sccache
           nil
+          mold
         ];
       };
     };
