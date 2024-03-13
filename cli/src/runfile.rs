@@ -265,7 +265,7 @@ impl<'i> Runfile<'i> {
                     format_args!(
                         "Error: Could not find command or subcommand '{}'\n{meant} {}",
                         first,
-                        FmtListSlice::from((&" ", args)).clear()
+                        FmtListSlice::from((&" ", args)).resetting()
                     )
                     .bright_red()
                     .bold(),

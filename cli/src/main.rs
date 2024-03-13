@@ -28,7 +28,7 @@ fn main() -> std::io::Result<()> {
         print_help();
         return Ok(());
     }
-
+    
     if args.first().is_some_and_oneof(["--print-complete"]) {
         crate::clap::print_completion();
         return Ok(());
@@ -170,7 +170,7 @@ fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
             eprintln!(
                 "{}Error: Could not read file '{file}'{}",
                 "".bright_red().bold().linger(),
-                "".clear()
+                "".resetting()
             );
             std::process::exit(1);
         };
@@ -202,7 +202,7 @@ fn get_file(args: &mut Vec<String>) -> (Str<'static>, String) {
             eprintln!(
                 "{}Error: {e}{}",
                 "".bright_red().bold().linger(),
-                "".clear()
+                "".resetting()
             );
             std::process::exit(1);
         }

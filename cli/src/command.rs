@@ -73,7 +73,7 @@ impl<'i> Command<'i> {
 
     pub fn doc(&'i self, parents: &StrListSlice) -> FmtList<&'static str, String> {
         let usage = self.usage(parents, Color::White, 0);
-        dbg!(FmtList::from(("\n", std::iter::once(usage))).extend(self.doc.lines()))
+        FmtList::from(("\n", std::iter::once(usage))).extend(self.doc.lines())
     }
 
     pub fn print_help(
@@ -126,12 +126,12 @@ impl<'i> Command<'i> {
             eprintln!(
                 "{}{parents} {name}: Expected arguments [{expected}], got [{got}]{}",
                 "".bright_red().bold().linger(),
-                "".clear()
+                "".resetting()
             );
             eprintln!(
                 "See '{}{parents} {name} --help{}' for more information",
                 "".bright_cyan().bold(),
-                "".clear()
+                "".resetting()
             );
             std::process::exit(1);
         }

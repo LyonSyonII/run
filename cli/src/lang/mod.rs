@@ -53,10 +53,12 @@ pub trait Language {
             .map_err(|error| exe_not_found(self.binary(), error))
             .or_else(|error| crate::nix::nix_shell(self.nix_packages(), self.binary()).ok_or(error))
     }
+    fn command_call(&self, _input: &str, _args: impl AsRef<[String]>) -> String {
+        todo!("command_call not implemented for {}", self.as_str())
+    }
 }
 
-fn exe_not_found(exe: impl AsRef<str>, error: which::Error) -> Str<'static> {
-    let exe = exe.as_ref();
+fn exe_not_found(exe: impl std::fmt::Display, error: which::Error) -> Str<'static> {
     let purple = yansi::Color::BrightMagenta.bold();
     let not_found = "could not be found.\nDo you have it installed and in the PATH?\n\nRun '";
     let run = "run --commands".bright_cyan().bold();
@@ -86,14 +88,14 @@ fn execution_failed(exe: impl std::fmt::Display, error: impl std::fmt::Display) 
     let error = format!(
         "{}'{exe}' failed to execute command{}\n\nComplete error: {error}",
         "".bright_magenta().bold().linger(),
-        "".clear()
+        "".resetting()
     );
     Str::from(error)
 }
 
 fn write_to_tmp(dir: &str, input: &str) -> Result<std::path::PathBuf, Str<'static>> {
     let to_error = |e: std::io::Error| Str::from(e.to_string());
-    
+
     // Write to file to allow inheriting stdin
     let file = std::env::temp_dir().join("run/").join(dir);
     std::fs::create_dir_all(&file).map_err(to_error)?;
@@ -127,7 +129,7 @@ fn program_with_alternatives(
         .find_map(|binary| which::which(binary).ok())
         .map(std::process::Command::new)
         .ok_or(exe_not_found(
-            crate::fmt::strlist::StrList::from((" or ", programs.iter().copied())).to_string(),
+            crate::fmt::strlist::FmtListSlice::from((&" or ", programs)),
             which::Error::CannotFindBinaryPath,
         ))
         .or_else(|error| crate::nix::nix_shell(nix_packages, programs[0]).ok_or(error))
