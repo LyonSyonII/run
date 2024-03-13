@@ -6,7 +6,7 @@ use yansi::{Color, Paint as _};
 
 use crate::{
     fmt::{
-        strlist::{StrList, StrListSlice},
+        strlist::{FmtList, FmtListSlice, StrListSlice},
         Str,
     },
     lang::{Lang, Language},
@@ -53,7 +53,7 @@ impl<'i> Command<'i> {
 
     // Clippy does not detect the usage in the 'format!' macro
     #[allow(unused_variables)]
-    pub fn usage(&self, parents: StrListSlice, color: Color, newlines: usize) -> String {
+    pub fn usage(&self, parents: &StrListSlice, color: Color, newlines: usize) -> String {
         let usage = "Usage:".paint(color).bold();
         let parents = parents.bright_cyan().bold();
         let name = self.name.bright_cyan().bold();
@@ -71,9 +71,9 @@ impl<'i> Command<'i> {
         &self.doc
     }
 
-    pub fn doc(&'i self, parents: StrListSlice) -> StrList<'i> {
+    pub fn doc(&'i self, parents: &StrListSlice) -> FmtList<&'static str, String> {
         let usage = self.usage(parents, Color::White, 0);
-        StrList::from(("\n", std::iter::once(usage))).extend(self.doc.lines())
+        dbg!(FmtList::from(("\n", std::iter::once(usage))).extend(self.doc.lines()))
     }
 
     pub fn print_help(
@@ -82,10 +82,10 @@ impl<'i> Command<'i> {
         indent: usize,
         to: &mut impl Write,
     ) -> std::io::Result<()> {
-        let lines = StrList::from(("\n", self.doc.lines()));
-        let usage = self.usage(parents, Color::BrightGreen, !lines.is_empty() as usize);
-
-        for l in lines.append(usage) {
+        let lines = FmtList::<&'static str, &str>::from(("\n", self.doc.lines()));
+        let usage = self.usage(&parents, Color::BrightGreen, !lines.is_empty() as usize);
+        
+        for l in lines.append(usage.as_str()) {
             writeln!(to, "{:indent$}{l}", "")?;
         }
         
@@ -118,11 +118,11 @@ impl<'i> Command<'i> {
         }
         
         if args.len() < self.args.len() {
-            let expected = StrList::from((
+            let expected = FmtList::<&'static str, String>::from((
                 ", ",
                 self.args.iter().map(|a| format!("<{}>", a.to_uppercase())),
             ));
-            let got = StrList::from((", ", args.iter().map(|a| a.as_str())));
+            let got = FmtListSlice::from((&", ", args));
             eprintln!(
                 "{}{parents} {name}: Expected arguments [{expected}], got [{got}]{}",
                 "".bright_red().bold().linger(),
@@ -142,8 +142,8 @@ impl<'i> Command<'i> {
             (&self.args, &args[..self.args.len()]),
             vars,
             runfile_docs,
-            self.doc(parents).to_string(),
-            self.usage(parents, Color::White, 0),
+            self.doc(&parents).to_string(),
+            self.usage(&parents, Color::White, 0),
         );
         let args = args.get(self.args.len()..).unwrap_or(&[]);
         // Run the script
@@ -174,8 +174,8 @@ fn replace_all<'a, 'i: 'a>(
     type Bytes<'i> = beef::lean::Cow<'i, [u8]>;
     let vars = vars.as_ref();
     
-    let vars_names = vars.into_iter().map(|(n, _)| Bytes::owned(fmt!("${n}").into()));
-    let vars_values = vars.into_iter().map(|(_, v)| {
+    let vars_names = vars.iter().map(|(n, _)| Bytes::owned(fmt!("${n}").into()));
+    let vars_values = vars.iter().map(|(_, v)| {
         let patterns = ["\\n", "\\r", "\\t", "\\0", "\\\"", "\\'", "\\\\", "\\$"];
         let replace_with = ["\n", "\r", "\t", "\0", "\"", "'", "\\", "$"];
         let ac = aho_corasick::AhoCorasick::new(patterns).unwrap();

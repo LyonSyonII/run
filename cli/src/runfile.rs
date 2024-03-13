@@ -5,8 +5,9 @@ use std::io::Write as _;
 use yansi::{Color, Paint};
 
 use crate::command::Command;
+use crate::fmt::strlist::{StrList, StrListSlice};
 use crate::fmt::{
-    strlist::{StrList, StrListSlice},
+    strlist::FmtListSlice,
     Str,
 };
 use crate::lang::Language as _;
@@ -46,7 +47,7 @@ impl<'i> Runfile<'i> {
         self
     }
 
-    pub fn doc(&self, name: impl AsRef<str>, parents: StrListSlice) -> StrList<'_> {
+    pub fn doc(&self, name: impl AsRef<str>, parents: &StrListSlice) -> StrList<'_> {
         let name = name.as_ref();
         let parents = parents.bright_cyan().bold();
         let (name, usage) = if name.is_empty() {
@@ -62,13 +63,13 @@ impl<'i> Runfile<'i> {
         } else {
             f!("{usage} {parents} {}", "[COMMAND] [ARGS...]".cyan())
         };
-        let lines = StrList::from(("\n", std::iter::once(usage)));
+        let lines = StrList::from(("\n", [Str::from(usage)]));
         lines.extend(self.doc.lines())
     }
 
     fn print_commands(
         &self,
-        parents: StrListSlice,
+        parents: &StrListSlice,
         indent: (usize, usize),
         to: &mut (impl std::io::Write + ?Sized),
     ) -> Result<(), Str<'_>> {
@@ -129,7 +130,7 @@ impl<'i> Runfile<'i> {
 
     fn print_subcommands(
         &self,
-        parents: StrListSlice,
+        parents: &StrListSlice,
         indent: (usize, usize),
         to: &mut (impl std::io::Write + ?Sized),
     ) -> Result<(), Str<'_>> {
@@ -169,12 +170,12 @@ impl<'i> Runfile<'i> {
         if let Some(msg) = msg {
             writeln!(to, "{msg}").map_err(op)?;
         }
-        writeln!(to, "{}", self.doc("", parents)).map_err(op)?;
+        writeln!(to, "{}", self.doc("", &parents)).map_err(op)?;
         if !self.commands.is_empty() || !self.subcommands.is_empty() {
             writeln!(to).map_err(op)?;
         }
-        self.print_commands(parents, indent, to)?;
-        self.print_subcommands(parents, indent, to)?;
+        self.print_commands(&parents, indent, to)?;
+        self.print_subcommands(&parents, indent, to)?;
 
         Ok(())
     }
@@ -203,8 +204,8 @@ impl<'i> Runfile<'i> {
             let indent = self.calculate_indent();
             let stdout = std::io::stdout();
             let mut stdout = stdout.lock();
-            self.print_commands(parents.as_slice(), indent, &mut stdout)?;
-            self.print_subcommands(parents.as_slice(), indent, &mut stdout)?;
+            self.print_commands(&parents.as_slice(), indent, &mut stdout)?;
+            self.print_subcommands(&parents.as_slice(), indent, &mut stdout)?;
             stdout.flush().unwrap();
             return Ok(());
         }
@@ -267,7 +268,7 @@ impl<'i> Runfile<'i> {
                     format_args!(
                         "Error: Could not find command or subcommand '{}'\n{meant} {}",
                         first,
-                        StrList::from((" ", args.iter().map(String::as_str))).clear()
+                        FmtListSlice::from((&" ", args)).clear()
                     )
                     .bright_red()
                     .bold(),
