@@ -228,7 +228,13 @@ impl<'i> Runfile<'i> {
                 return Ok(());
             };
             return cmd
-                .run(parents.as_slice(), args, vars, runfile_docs()?)
+                .run(
+                    parents.as_slice(),
+                    args,
+                    &self.commands,
+                    vars,
+                    runfile_docs()?,
+                )
                 .map_err(|e| f!("Command execution failed: {}", e).into());
         };
 
@@ -243,6 +249,7 @@ impl<'i> Runfile<'i> {
             cmd.run(
                 parents.as_slice(),
                 args.get(1..).unwrap_or_default(),
+                &self.commands,
                 vars,
                 runfile_docs()?,
             )

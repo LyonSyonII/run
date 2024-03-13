@@ -305,6 +305,35 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ca97a8d20e26389dca2dd5520ec3d15aceb7ca4bc2c6f0a9335dd72e05cb5c15"
 
 [[package]]
+name = "regex"
+version = "1.10.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b62dbe01f0b06f9d8dc7d49e05a0785f153b00b2c227856282f671e0318c9b15"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-automata",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-automata"
+version = "0.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86b83b8b9847f9bf95ef68afb0b8e6cdb80f498442f5179a29fad448fcc1eaea"
+dependencies = [
+ "aho-corasick",
+ "memchr",
+ "regex-syntax",
+]
+
+[[package]]
+name = "regex-syntax"
+version = "0.8.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
+
+[[package]]
 name = "runfile"
 version = "0.1.1"
 dependencies = [
@@ -319,6 +348,7 @@ dependencies = [
  "md5",
  "peg",
  "read_pipe",
+ "regex",
  "thiserror",
  "which",
  "xxhash-rust",

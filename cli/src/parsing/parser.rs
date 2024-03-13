@@ -68,7 +68,6 @@ peg::parser! {
             let lang = unwrap(lang, crate::lang::Shell.into(), &mut errors);
             let name = unwrap(name, "", &mut errors);
             let args = unwrap(args, Vec::new(), &mut errors);
-            // unwrap(count, 0, &mut errors);
 
             if errors.is_empty() {
                 let command = Command::new(name, doc, lang, args, script);

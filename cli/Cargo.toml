@@ -29,6 +29,7 @@ md5 = "0.7.0"                                                                   
 app_dirs2 = "2.5.5"                                                             # Cross-platform app dirs for compilation cache
 thiserror = "1.0.58"                                                            # Better error type creation
 enum_dispatch = "0.3.12"                                                        # Replace dynamic dispatch with enums
+regex = "1.10.3"
 
 [profile.dev]
 debug = false

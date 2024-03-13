@@ -1,12 +1,12 @@
 pub use std::format as fmt;
-use std::io::Write;
+use std::{hash::Hash, io::Write};
 
 // use colored::{Color, Colorize as _};
 use yansi::{Color, Paint as _};
 
 use crate::{
     fmt::{
-        strlist::{FmtList, FmtListSlice, StrListSlice},
+        strlist::{FmtList, FmtListSlice, StrList, StrListSlice},
         Str,
     },
     lang::{Lang, Language},
@@ -103,10 +103,32 @@ impl<'i> Command<'i> {
         script.map(|l| &l[indent..]).collect::<Vec<_>>().join("\n")
     }
 
+    fn print_expected_args<D>(&self, parents: impl std::fmt::Display, got: &[D]) -> ! where D: std::fmt::Display {
+        let name = self.name;
+
+        let expected = FmtList::<&'static str, String>::from((
+            ", ",
+            self.args.iter().map(|a| format!("<{}>", a.to_uppercase())),
+        ));
+        let got = FmtListSlice::from((&", ", got));
+        eprintln!(
+            "{}{parents} {name}: Expected arguments [{expected}], got [{got}]{}",
+            "".bright_red().bold().linger(),
+            "".resetting()
+        );
+        eprintln!(
+            "See '{}{parents} {name} --help{}' for more information",
+            "".bright_cyan().bold(),
+            "".resetting()
+        );
+        std::process::exit(1)
+    }
+
     pub fn run<'a>(
         &'a self,
         parents: StrListSlice,
         args: impl AsRef<[String]>,
+        commands: &crate::HashMap<&'i str, Command<'i>>,
         vars: impl AsRef<[&'a (&'i str, Str<'i>)]>,
         runfile_docs: String,
     ) -> std::io::Result<()> {
@@ -118,28 +140,16 @@ impl<'i> Command<'i> {
         }
 
         if args.len() < self.args.len() {
-            let expected = FmtList::<&'static str, String>::from((
-                ", ",
-                self.args.iter().map(|a| format!("<{}>", a.to_uppercase())),
-            ));
-            let got = FmtListSlice::from((&", ", args));
-            eprintln!(
-                "{}{parents} {name}: Expected arguments [{expected}], got [{got}]{}",
-                "".bright_red().bold().linger(),
-                "".resetting()
-            );
-            eprintln!(
-                "See '{}{parents} {name} --help{}' for more information",
-                "".bright_cyan().bold(),
-                "".resetting()
-            );
-            std::process::exit(1);
+            self.print_expected_args(&parents, args)
         }
 
         // Remove indentation from script
         let script = replace_all(
+            self.name,
+            self.lang,
             self.script_with_indent_fix(),
             (&self.args, &args[..self.args.len()]),
+            commands,
             vars,
             runfile_docs,
             self.doc(&parents).to_string(),
@@ -163,8 +173,11 @@ impl<'i> Command<'i> {
 }
 
 fn replace_all<'a, 'i: 'a>(
-    script: String,
+    command_name: &'i str,
+    lang: Lang,
+    mut script: String,
     args: (&[&str], &[String]),
+    commands: &crate::HashMap<&'i str, Command<'i>>,
     vars: impl AsRef<[&'a (&'i str, Str<'i>)]>,
     runfile_docs: String,
     doc: String,
@@ -173,6 +186,22 @@ fn replace_all<'a, 'i: 'a>(
     // Replace arguments
     type Bytes<'i> = beef::lean::Cow<'i, [u8]>;
     let vars = vars.as_ref();
+    
+    for (name, command) in commands {
+        let re = regex::Regex::new(&format!("\\${}\\(((?:[^\\s]*?\\s*)*?)\\)", name)).unwrap();
+
+        while let Some(c) = re.captures(&script) {
+            let r#match = c.get(0).unwrap();
+            let (_, [args]) = c.extract();
+            
+            let args = args.split_whitespace().collect::<Vec<_>>();
+            if args.len() < command.args.len() {
+                command.print_expected_args(command_name, &args);
+            }
+            let replace = lang.command_call(name, &args);
+            script.replace_range(r#match.start()..=r#match.end(), &replace);
+        }
+    }
 
     let vars_names = vars.iter().map(|(n, _)| Bytes::owned(fmt!("${n}").into()));
     let vars_values = vars.iter().map(|(_, v)| {

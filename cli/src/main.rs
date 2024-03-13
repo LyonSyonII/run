@@ -28,7 +28,7 @@ fn main() -> std::io::Result<()> {
         print_help();
         return Ok(());
     }
-    
+
     if args.first().is_some_and_oneof(["--print-complete"]) {
         crate::clap::print_completion();
         return Ok(());

@@ -13,9 +13,9 @@ impl super::Language for Shell {
     fn nix_packages(&self) -> &'static [&'static str] {
         &[]
     }
-
-    fn command_call(&self, input: &str, args: impl AsRef<[String]>) -> String {
+    
+    fn command_call<'a>(&'a self, command: &str, args: impl AsRef<[&'a str]>) -> String {
         let args = crate::fmt::strlist::FmtListSlice::from((&" ", args.as_ref()));
-        format!("{} {}", input, args)
+        format!("run {} {}", command, args)
     }
 }

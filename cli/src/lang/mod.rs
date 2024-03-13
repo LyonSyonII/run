@@ -53,7 +53,8 @@ pub trait Language {
             .map_err(|error| exe_not_found(self.binary(), error))
             .or_else(|error| crate::nix::nix_shell(self.nix_packages(), self.binary()).ok_or(error))
     }
-    fn command_call(&self, _input: &str, _args: impl AsRef<[String]>) -> String {
+    #[allow(unused)]
+    fn command_call<'a>(&'a self, command: &str, args: impl AsRef<[&'a str]>) -> String {
         todo!("command_call not implemented for {}", self.as_str())
     }
 }
