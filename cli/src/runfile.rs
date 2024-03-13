@@ -6,10 +6,7 @@ use yansi::{Color, Paint};
 
 use crate::command::Command;
 use crate::fmt::strlist::{StrList, StrListSlice};
-use crate::fmt::{
-    strlist::FmtListSlice,
-    Str,
-};
+use crate::fmt::{strlist::FmtListSlice, Str};
 use crate::lang::Language as _;
 use crate::utils::OptionExt;
 use crate::HashMap;
@@ -137,9 +134,9 @@ impl<'i> Runfile<'i> {
         if self.subcommands.is_empty() {
             return Ok(());
         }
-        
+
         let op = |e: std::io::Error| Str::from(e.to_string());
-        
+
         writeln!(to, "{}", "Subcommands:".bright_green().bold()).map_err(op)?;
         let subcommands = self.subcommands.iter().collect::<Vec<_>>();
         let indent = indent.0 + indent.1;
@@ -185,15 +182,15 @@ impl<'i> Runfile<'i> {
         path: Option<&std::path::Path>,
         parents: impl Into<StrList<'a>>,
         args: &'a [String],
-        mut vars: Vec<&'a (&'i str, Str<'i>)>
+        mut vars: Vec<&'a (&'i str, Str<'i>)>,
     ) -> Result<(), Str<'a>> {
         let parents = parents.into();
         vars.extend(self.vars.iter());
-        
+
         if let Some(path) = path {
             std::env::set_current_dir(path).map_err(|e| Str::from(e.to_string()))?;
         }
-        
+
         let first = args.first();
         // Needed for subcommands
         if first.is_some_and_oneof(["-h", "--help"]) {
@@ -234,14 +231,14 @@ impl<'i> Runfile<'i> {
                 .run(parents.as_slice(), args, vars, runfile_docs()?)
                 .map_err(|e| f!("Command execution failed: {}", e).into());
         };
-        
+
         let Some(first) = first.map(String::as_str) else {
             return default(args, vars);
         };
         if first == "--" {
             return default(args.get(1..).unwrap_or_default(), vars);
         }
-        
+
         if let Some(cmd) = self.commands.get(first) {
             cmd.run(
                 parents.as_slice(),
@@ -255,7 +252,7 @@ impl<'i> Runfile<'i> {
                 None,
                 parents.append(first),
                 args.get(1..).unwrap_or_default(),
-                vars
+                vars,
             )
         } else if self
             .commands

@@ -4,19 +4,32 @@ pub type StrList<'a> = FmtList<&'static str, Str<'a>>;
 pub type StrListSlice<'a> = FmtListSlice<'a, &'static str, Str<'a>>;
 
 #[derive(Debug, Clone)]
-pub struct FmtList<S, D> where S: std::fmt::Display, D: std::fmt::Display {
+pub struct FmtList<S, D>
+where
+    S: std::fmt::Display,
+    D: std::fmt::Display,
+{
     separator: S,
     elements: Vec<D>,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct FmtListSlice<'a, S, D> where S: std::fmt::Display, D: std::fmt::Display, S: ?Sized {
+pub struct FmtListSlice<'a, S, D>
+where
+    S: std::fmt::Display,
+    D: std::fmt::Display,
+    S: ?Sized,
+{
     separator: &'a S,
     elements: &'a [D],
 }
 
 #[allow(dead_code)]
-impl<S, D> FmtList<S, D> where S: std::fmt::Display, D: std::fmt::Display {
+impl<S, D> FmtList<S, D>
+where
+    S: std::fmt::Display,
+    D: std::fmt::Display,
+{
     pub fn new(separator: S) -> Self {
         Self {
             separator,
@@ -66,29 +79,39 @@ impl<S, D> FmtList<S, D> where S: std::fmt::Display, D: std::fmt::Display {
     pub fn last(&self) -> Option<&D> {
         self.elements.last()
     }
-    
+
     pub fn except_last(&self) -> FmtListSlice<'_, S, D> {
         let last = self.elements.len() - 1;
         FmtListSlice::new(&self.separator, self.elements().get(..last).unwrap_or(&[]))
     }
-    
+
     pub fn last_slice(&self) -> FmtListSlice<'_, S, D> {
         let last = self.elements.len() - 1;
         if last == 0 {
             return FmtListSlice::new(&self.separator, &[]);
         }
-        FmtListSlice::new(&self.separator, self.elements().get(last..=last).unwrap_or(&[]))
+        FmtListSlice::new(
+            &self.separator,
+            self.elements().get(last..=last).unwrap_or(&[]),
+        )
     }
-    
+
     pub fn as_slice(&self) -> FmtListSlice<'_, S, D> {
         FmtListSlice::new(&self.separator, self.elements.as_slice())
     }
 }
 
 #[allow(dead_code)]
-impl<'a, S, D> FmtListSlice<'a, S, D> where S: std::fmt::Display, D: std::fmt::Display {
+impl<'a, S, D> FmtListSlice<'a, S, D>
+where
+    S: std::fmt::Display,
+    D: std::fmt::Display,
+{
     fn new(separator: &'a S, elements: &'a [D]) -> Self {
-        Self { separator, elements }
+        Self {
+            separator,
+            elements,
+        }
     }
 
     pub fn first(&'a self) -> Option<&'a D> {
@@ -108,13 +131,21 @@ impl<'a, S, D> FmtListSlice<'a, S, D> where S: std::fmt::Display, D: std::fmt::D
     }
 }
 
-impl<S, D> std::fmt::Display for FmtList<S, D> where S: std::fmt::Display, D: std::fmt::Display {
+impl<S, D> std::fmt::Display for FmtList<S, D>
+where
+    S: std::fmt::Display,
+    D: std::fmt::Display,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.as_slice())
     }
 }
 
-impl<'a, S, D> std::fmt::Display for FmtListSlice<'a, S, D> where S: std::fmt::Display, D: std::fmt::Display {
+impl<'a, S, D> std::fmt::Display for FmtListSlice<'a, S, D>
+where
+    S: std::fmt::Display,
+    D: std::fmt::Display,
+{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut iter = self.elements().iter();
         let separator = self.separator();
@@ -130,7 +161,7 @@ impl<'a, S, D> std::fmt::Display for FmtListSlice<'a, S, D> where S: std::fmt::D
 
 impl<S, D, IntoD, Separator, I> From<(Separator, I)> for FmtList<S, D>
 where
-    S: std::fmt::Display, 
+    S: std::fmt::Display,
     D: std::fmt::Display,
     IntoD: Into<D>,
     Separator: Into<S>,
@@ -146,7 +177,7 @@ where
 
 impl<'a, S, D> From<(&'a S, &'a [D])> for FmtListSlice<'a, S, D>
 where
-    S: std::fmt::Display, 
+    S: std::fmt::Display,
     D: std::fmt::Display,
 {
     fn from((separator, elements): (&'a S, &'a [D])) -> Self {
@@ -157,7 +188,11 @@ where
     }
 }
 
-impl<S, D> IntoIterator for FmtList<S, D> where S: std::fmt::Display, D: std::fmt::Display {
+impl<S, D> IntoIterator for FmtList<S, D>
+where
+    S: std::fmt::Display,
+    D: std::fmt::Display,
+{
     type Item = D;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
@@ -166,7 +201,11 @@ impl<S, D> IntoIterator for FmtList<S, D> where S: std::fmt::Display, D: std::fm
     }
 }
 
-impl<'a, S, D> IntoIterator for FmtListSlice<'a, S, D> where S: std::fmt::Display, D: std::fmt::Display {
+impl<'a, S, D> IntoIterator for FmtListSlice<'a, S, D>
+where
+    S: std::fmt::Display,
+    D: std::fmt::Display,
+{
     type Item = &'a D;
     type IntoIter = std::slice::Iter<'a, D>;
 
@@ -179,7 +218,7 @@ impl<S, D, I> std::iter::Extend<I> for FmtList<S, D>
 where
     S: std::fmt::Display,
     D: std::fmt::Display,
-    I: Into<D>
+    I: Into<D>,
 {
     fn extend<T: IntoIterator<Item = I>>(&mut self, iter: T) {
         let iter = iter.into_iter().map(|s| s.into());

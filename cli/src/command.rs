@@ -84,14 +84,14 @@ impl<'i> Command<'i> {
     ) -> std::io::Result<()> {
         let lines = FmtList::<&'static str, &str>::from(("\n", self.doc.lines()));
         let usage = self.usage(&parents, Color::BrightGreen, !lines.is_empty() as usize);
-        
+
         for l in lines.append(usage.as_str()) {
             writeln!(to, "{:indent$}{l}", "")?;
         }
-        
+
         Ok(())
     }
-    
+
     pub fn script_with_indent_fix(&self) -> String {
         // Remove extra indentation from script
         let script = self.script.to_string();
@@ -102,7 +102,7 @@ impl<'i> Command<'i> {
             .unwrap_or(0);
         script.map(|l| &l[indent..]).collect::<Vec<_>>().join("\n")
     }
-    
+
     pub fn run<'a>(
         &'a self,
         parents: StrListSlice,
@@ -116,7 +116,7 @@ impl<'i> Command<'i> {
             self.print_help(parents, 0, &mut std::io::stdout())?;
             return Ok(());
         }
-        
+
         if args.len() < self.args.len() {
             let expected = FmtList::<&'static str, String>::from((
                 ", ",
@@ -135,7 +135,7 @@ impl<'i> Command<'i> {
             );
             std::process::exit(1);
         }
-        
+
         // Remove indentation from script
         let script = replace_all(
             self.script_with_indent_fix(),
@@ -157,7 +157,7 @@ impl<'i> Command<'i> {
             );
             eprintln!("{e}");
         }
-        
+
         Ok(())
     }
 }
@@ -173,7 +173,7 @@ fn replace_all<'a, 'i: 'a>(
     // Replace arguments
     type Bytes<'i> = beef::lean::Cow<'i, [u8]>;
     let vars = vars.as_ref();
-    
+
     let vars_names = vars.iter().map(|(n, _)| Bytes::owned(fmt!("${n}").into()));
     let vars_values = vars.iter().map(|(_, v)| {
         let patterns = ["\\n", "\\r", "\\t", "\\0", "\\\"", "\\'", "\\\\", "\\$"];
