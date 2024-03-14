@@ -103,14 +103,17 @@ impl<'i> Command<'i> {
         script.map(|l| &l[indent..]).collect::<Vec<_>>().join("\n")
     }
 
-    fn print_expected_args<D>(&self, parents: impl std::fmt::Display, got: &[D]) -> ! where D: std::fmt::Display {
+    fn print_expected_args<'a, D>(&'a self, parents: impl std::fmt::Display, got: impl IntoIterator<Item = &'a D> + Clone) -> !
+    where
+        D: std::fmt::Display + ?Sized + 'a,
+    {
         let name = self.name;
-
-        let expected = FmtList::<&'static str, String>::from((
+        
+        let expected = crate::fmt::strlist::FmtList::<&'static str, String>::from((
             ", ",
             self.args.iter().map(|a| format!("<{}>", a.to_uppercase())),
         ));
-        let got = FmtListSlice::from((&", ", got));
+        let got = crate::fmt::strlist::FmtIter::new(&", ", got);
         eprintln!(
             "{}{parents} {name}: Expected arguments [{expected}], got [{got}]{}",
             "".bright_red().bold().linger(),
@@ -186,7 +189,8 @@ fn replace_all<'a, 'i: 'a>(
     // Replace arguments
     type Bytes<'i> = beef::lean::Cow<'i, [u8]>;
     let vars = vars.as_ref();
-    
+
+    // TODO: Fix command calls from subcommands
     for (name, command) in commands {
         let re = regex::Regex::new(&format!("\\${}\\(((?:[^\\s]*?\\s*)*?)\\)", name)).unwrap();
 
@@ -194,11 +198,11 @@ fn replace_all<'a, 'i: 'a>(
             let r#match = c.get(0).unwrap();
             let (_, [args]) = c.extract();
             
-            let args = args.split_whitespace().collect::<Vec<_>>();
+            // TODO: Remove check? To avoid errors on comments and code that will not be executed
             if args.len() < command.args.len() {
-                command.print_expected_args(command_name, &args);
+                command.print_expected_args(command_name, args.split_ascii_whitespace());
             }
-            let replace = lang.command_call(name, &args);
+            let replace = lang.command_call(name, args.split_ascii_whitespace());
             script.replace_range(r#match.start()..=r#match.end(), &replace);
         }
     }

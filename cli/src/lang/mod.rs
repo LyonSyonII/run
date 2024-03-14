@@ -54,7 +54,14 @@ pub trait Language {
             .or_else(|error| crate::nix::nix_shell(self.nix_packages(), self.binary()).ok_or(error))
     }
     #[allow(unused)]
-    fn command_call<'a>(&'a self, command: &str, args: impl AsRef<[&'a str]>) -> String {
+    fn command_call<'a, D>(
+        &'a self,
+        command: &str,
+        args: impl IntoIterator<Item = &'a D> + Clone,
+    ) -> String
+    where
+        D: std::fmt::Display + ?Sized + 'a,
+    {
         todo!("command_call not implemented for {}", self.as_str())
     }
 }

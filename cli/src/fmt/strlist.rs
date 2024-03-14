@@ -24,6 +24,17 @@ where
     elements: &'a [D],
 }
 
+#[derive(Debug, Clone)]
+pub struct FmtIter<'a, S, D, I>
+where
+    S: std::fmt::Display + ?Sized,
+    D: std::fmt::Display + ?Sized + 'a,
+    I: IntoIterator<Item = &'a D> + Clone,
+{
+    separator: &'a S,
+    elements: I,
+}
+
 #[allow(dead_code)]
 impl<S, D> FmtList<S, D>
 where
@@ -131,6 +142,20 @@ where
     }
 }
 
+impl<'a, S, D, I> FmtIter<'a, S, D, I>
+where
+    S: std::fmt::Display + ?Sized,
+    D: std::fmt::Display + ?Sized,
+    I: IntoIterator<Item = &'a D> + Clone,
+{
+    pub fn new(separator: &'a S, elements: I) -> Self {
+        Self {
+            separator,
+            elements,
+        }
+    }
+}
+
 impl<S, D> std::fmt::Display for FmtList<S, D>
 where
     S: std::fmt::Display,
@@ -153,6 +178,25 @@ where
             write!(f, "{}", first)?;
             for s in iter {
                 write!(f, "{}{}", separator, s)?;
+            }
+        }
+        Ok(())
+    }
+}
+
+impl<'a, S, D, I> std::fmt::Display for FmtIter<'a, S, D, I>
+where
+    S: std::fmt::Display + ?Sized,
+    D: std::fmt::Display + ?Sized,
+    I: IntoIterator<Item = &'a D> + Clone,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut iter = self.elements.clone().into_iter();
+        let separator = self.separator;
+        if let Some(first) = iter.next() {
+            write!(f, "{first}")?;
+            for s in iter {
+                write!(f, "{separator}{s}")?;
             }
         }
         Ok(())

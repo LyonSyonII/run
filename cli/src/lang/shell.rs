@@ -13,9 +13,16 @@ impl super::Language for Shell {
     fn nix_packages(&self) -> &'static [&'static str] {
         &[]
     }
-    
-    fn command_call<'a>(&'a self, command: &str, args: impl AsRef<[&'a str]>) -> String {
-        let args = crate::fmt::strlist::FmtListSlice::from((&" ", args.as_ref()));
+
+    fn command_call<'a, D>(
+        &'a self,
+        command: &str,
+        args: impl IntoIterator<Item = &'a D> + Clone,
+    ) -> String
+    where
+        D: std::fmt::Display + ?Sized + 'a,
+    {
+        let args = crate::fmt::strlist::FmtIter::new(&" ", args);
         format!("run {} {}", command, args)
     }
 }
