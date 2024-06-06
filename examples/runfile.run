@@ -104,16 +104,25 @@ cmd args(name age) {
 // Eg: run -- arg1 arg2
 /// Try calling me with more than one argument!
 rs cmd extra-args(first) {
-  println!("The first explicit{{}} argument is $first");
+  println!("The first explicit argument is $first");
   println!("The other ones are: {:?}", std::env::args().skip(1).collect::<Vec<_>>());
 }
 
 // To use unclosed '{' or '}', add extra brackets to the entire body
-// An arbitrary amount can be used, depending on the number consecutive brackets
+// An arbitrary amount can be used, depending on the number of consecutive brackets
+/// I will print some unclosed brackets
 rs cmd unclosed-brackets() {{{
   println!("An unclosed bracket '}}'");
   println!("Another unclosed bracket '{{'");
 }}}
+
+// You can call other commands
+rs cmd command-call() {
+  $run(subcommand default);
+  // $run(command-call)
+}
+
+
 
 // You can define subcommands with the 'sub' keyword
 // Subcommands can be called with the syntax: 'run subcommand'

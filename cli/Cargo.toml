@@ -14,25 +14,25 @@ name = "run"
 path = "src/main.rs"
 
 [dependencies]
-peg = "0.8.2"                                                                   # Parser generator
-ariadne = "0.4.0"                                                               # Better parser error reports
+peg = "0.8.3"                                                                   # Parser generator
+ariadne = "0.4.1"                                                               # Better parser error reports
 yansi = { version = "1.0.1", features = ["detect-tty", "detect-env"] }     # Colorize output (no alloc)
-aho-corasick = "1.1.2"                                                          # Fast string replace (used in variable replacement)
+aho-corasick = "1.1.3"                                                          # Fast string replace (used in variable replacement)
 beef = { version = "0.5.2" }                                                    # Slimmer Cow<str>
 read_pipe = "0.2.0"                                                             # Detect if runfile is being piped into
-clap_complete = { version = "4.5.1" }                                          # Generate completions for CLI
-clap = { version = "4.5.2", default-features = false, features = ["string"] }  # Needed for clap_complete
-which = "6.0.0"                                                                 # Find executables in PATH
-indexmap = { version = "2.2.5" }                                                # Keep order of commands as written in runfile
+clap_complete = { version = "4.5.2" }                                          # Generate completions for CLI
+clap = { version = "4.5.4", default-features = false, features = ["string"] }  # Needed for clap_complete
+which = "6.0.1"                                                                 # Find executables in PATH
+indexmap = { version = "2.2.6" }                                                # Keep order of commands as written in runfile
 xxhash-rust = { version = "0.8.10", features = ["xxh3"] }                        # Faster hashing for hashmap
 md5 = "0.7.0"                                                                   # Hash scripts for caching                           
 app_dirs2 = "2.5.5"                                                             # Cross-platform app dirs for compilation cache
-thiserror = "1.0.58"                                                            # Better error type creation
-enum_dispatch = "0.3.12"                                                        # Replace dynamic dispatch with enums
-regex = "1.10.3"
+thiserror = "1.0.61"                                                            # Better error type creation
+enum_dispatch = "0.3.13"                                                        # Replace dynamic dispatch with enums
+regex = "1.10.4"
 
 [profile.dev]
-debug = false
+debug = "full"
 strip = true
 
 [profile.release]

@@ -54,11 +54,7 @@ pub trait Language {
             .or_else(|error| crate::nix::nix_shell(self.nix_packages(), self.binary()).ok_or(error))
     }
     #[allow(unused)]
-    fn command_call<'a, D>(
-        &'a self,
-        command: &str,
-        args: impl IntoIterator<Item = &'a D> + Clone,
-    ) -> String
+    fn command_call<'a, D>(&'a self, args: impl IntoIterator<Item = &'a D> + Clone) -> String
     where
         D: std::fmt::Display + ?Sized + 'a,
     {

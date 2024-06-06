@@ -103,17 +103,24 @@ impl<'i> Command<'i> {
         script.map(|l| &l[indent..]).collect::<Vec<_>>().join("\n")
     }
 
-    fn print_expected_args<'a, D>(&'a self, parents: impl std::fmt::Display, got: impl IntoIterator<Item = &'a D> + Clone) -> !
+    fn print_expected_args<'a, D>(
+        &'a self,
+        parents: impl std::fmt::Display,
+        got: impl IntoIterator<Item = &'a D> + Clone,
+    ) -> !
     where
         D: std::fmt::Display + ?Sized + 'a,
     {
         let name = self.name;
         
-        let expected = crate::fmt::strlist::FmtList::<&'static str, String>::from((
-            ", ",
-            self.args.iter().map(|a| format!("<{}>", a.to_uppercase())),
-        ));
-        let got = crate::fmt::strlist::FmtIter::new(&", ", got);
+        // let expected = crate::fmt::strlist::FmtList::<&'static str, String>::from((
+        //     ", ",
+        //     self.args.iter().map(|a| format!("<{}>", a.to_uppercase())),
+        // ));
+        let expected = crate::fmt::strlist::FmtIter::new(", ", self.args.iter())
+            .with_map(|a: &&str, f: &mut std::fmt::Formatter| write!(f, "<{}>", a.to_uppercase()));
+
+        let got = crate::fmt::strlist::FmtIter::new(", ", got);
         eprintln!(
             "{}{parents} {name}: Expected arguments [{expected}], got [{got}]{}",
             "".bright_red().bold().linger(),
@@ -148,11 +155,9 @@ impl<'i> Command<'i> {
 
         // Remove indentation from script
         let script = replace_all(
-            self.name,
             self.lang,
             self.script_with_indent_fix(),
             (&self.args, &args[..self.args.len()]),
-            commands,
             vars,
             runfile_docs,
             self.doc(&parents).to_string(),
@@ -176,11 +181,9 @@ impl<'i> Command<'i> {
 }
 
 fn replace_all<'a, 'i: 'a>(
-    command_name: &'i str,
     lang: Lang,
     mut script: String,
     args: (&[&str], &[String]),
-    commands: &crate::HashMap<&'i str, Command<'i>>,
     vars: impl AsRef<[&'a (&'i str, Str<'i>)]>,
     runfile_docs: String,
     doc: String,
@@ -189,22 +192,15 @@ fn replace_all<'a, 'i: 'a>(
     // Replace arguments
     type Bytes<'i> = beef::lean::Cow<'i, [u8]>;
     let vars = vars.as_ref();
-
-    // TODO: Fix command calls from subcommands
-    for (name, command) in commands {
-        let re = regex::Regex::new(&format!("\\${}\\(((?:[^\\s]*?\\s*)*?)\\)", name)).unwrap();
-
-        while let Some(c) = re.captures(&script) {
-            let r#match = c.get(0).unwrap();
-            let (_, [args]) = c.extract();
-            
-            // TODO: Remove check? To avoid errors on comments and code that will not be executed
-            if args.len() < command.args.len() {
-                command.print_expected_args(command_name, args.split_ascii_whitespace());
-            }
-            let replace = lang.command_call(name, args.split_ascii_whitespace());
-            script.replace_range(r#match.start()..=r#match.end(), &replace);
-        }
+    
+    let re = regex::Regex::new("\\$run\\s*\\(\\s*((?:[^\\s]+?\\s*)*?)\\)").unwrap();
+    let mut start = 0;
+    while let Some(c) = re.captures_at(&script, start) {
+        let r#match = c.get(0).unwrap();
+        let (_, [args]) = c.extract();
+        let replace = lang.command_call(args.split_ascii_whitespace());
+        start = r#match.start() + replace.len();
+        script.replace_range(r#match.start()..r#match.end(), &replace);
     }
 
     let vars_names = vars.iter().map(|(n, _)| Bytes::owned(fmt!("${n}").into()));

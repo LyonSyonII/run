@@ -22,6 +22,14 @@ impl super::Language for Rust {
         super::installed_all([BINARY, "rustc"])
     }
 
+    fn command_call<'a, D>(&'a self, args: impl IntoIterator<Item = &'a D> + Clone) -> String
+    where
+        D: std::fmt::Display + ?Sized + 'a,
+    {
+        let args = crate::fmt::strlist::FmtIter::new(",", args);
+        format!("::std::process::Command::new(\"run\").args({args}).output().unwrap()")
+    }
+    
     fn execute(&self, input: &str, args: impl AsRef<[String]>) -> Result<(), Str<'_>> {
         let input = format!("fn main() {{\n{}\n}}", input);
         super::execute_compiled(

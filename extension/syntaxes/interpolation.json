@@ -9,7 +9,7 @@
     "repository": {
       "interpolation": {
         "name": "meta.interpolation.run",
-        "match": "\\$\\w+"
+        "match": "\\$run\\s*\\(.*\\)|\\$\\w+"
       }
     }
   }

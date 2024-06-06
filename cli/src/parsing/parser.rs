@@ -4,7 +4,8 @@ use crate::lang::Lang;
 
 use crate::fmt::Str;
 use crate::runfile::Runfile;
-pub use runfile::runfile;
+
+pub use runfile::{runcall, runfile};
 
 use crate::HashMap;
 
@@ -47,10 +48,7 @@ peg::parser! {
                 (false, false) => Ok(v)
             }
         }
-        pub rule body_start() -> usize = s:$['{']+ { s.len() } /*
-        } / start:pos() end:pos() {
-            Error::PExpectedBodyStart(start, end).err()
-        } */
+        pub rule body_start() -> usize = s:$['{']+ { s.len() }
         pub rule body_end(count: usize) = ['}']*<{count}>
         pub rule body(count: usize) -> &'input str = $((!(['{'|'}']*<{count}>)[_] / "{"*<1, {(count-1).max(1)}> body((count-1).max(1)) "}"*<1, {(count-1).max(1)}>)*)               // TODO: Remove this atrocity
         pub rule command() -> Element<'input> = __ doc:doc() __ lang:language() __ name:name() __ args:arguments() __ count:body_start() script:body(count) body_end(count) __ {
@@ -162,6 +160,14 @@ peg::parser! {
                     vars
                 }
             )
+        }
+
+
+        rule _runcall() -> (usize, usize, Vec<&'input str>) = start:pos() "$run" __ "(" __ args:(ident() ** (" "+)) __ ")" end:pos() {
+            (start, end, args)
+        }
+        pub rule runcall() -> (usize, usize, Vec<&'input str>) = (!_runcall() [_])* call:_runcall() {
+            call
         }
     }
 }

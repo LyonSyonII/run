@@ -4,35 +4,40 @@ pub type StrList<'a> = FmtList<&'static str, Str<'a>>;
 pub type StrListSlice<'a> = FmtListSlice<'a, &'static str, Str<'a>>;
 
 #[derive(Debug, Clone)]
-pub struct FmtList<S, D>
+pub struct FmtList<S, D, M = fn(&D, &mut std::fmt::Formatter<'_>) -> std::fmt::Result>
 where
     S: std::fmt::Display,
     D: std::fmt::Display,
+    M: Fn(&D, &mut std::fmt::Formatter<'_>) -> std::fmt::Result,
 {
     separator: S,
     elements: Vec<D>,
+    map: M,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct FmtListSlice<'a, S, D>
+pub struct FmtListSlice<'a, S, D, M = fn(&D, &mut std::fmt::Formatter<'_>) -> std::fmt::Result>
 where
-    S: std::fmt::Display,
+    S: std::fmt::Display + ?Sized,
     D: std::fmt::Display,
-    S: ?Sized,
+    M: Fn(&D, &mut std::fmt::Formatter<'_>) -> std::fmt::Result,
 {
     separator: &'a S,
     elements: &'a [D],
+    map: M,
 }
 
 #[derive(Debug, Clone)]
-pub struct FmtIter<'a, S, D, I>
+pub struct FmtIter<'a, S, D, I, M = fn(&D, &mut std::fmt::Formatter<'_>) -> std::fmt::Result>
 where
     S: std::fmt::Display + ?Sized,
     D: std::fmt::Display + ?Sized + 'a,
     I: IntoIterator<Item = &'a D> + Clone,
+    M: Fn(&D, &mut std::fmt::Formatter<'_>) -> std::fmt::Result,
 {
     separator: &'a S,
     elements: I,
+    map: M,
 }
 
 #[allow(dead_code)]
@@ -45,6 +50,7 @@ where
         Self {
             separator,
             elements: Vec::new(),
+            map: |s, f| write!(f, "{s}"),
         }
     }
 
@@ -108,7 +114,18 @@ where
     }
 
     pub fn as_slice(&self) -> FmtListSlice<'_, S, D> {
-        FmtListSlice::new(&self.separator, self.elements.as_slice())
+        FmtListSlice::new(&self.separator, self.elements.as_slice()).with_map(self.map)
+    }
+
+    pub fn with_map<M>(self, map: M) -> FmtList<S, D, M>
+    where
+        M: Fn(&D, &mut std::fmt::Formatter<'_>) -> std::fmt::Result,
+    {
+        FmtList {
+            separator: self.separator,
+            elements: self.elements,
+            map,
+        }
     }
 }
 
@@ -122,6 +139,7 @@ where
         Self {
             separator,
             elements,
+            map: default_map,
         }
     }
 
@@ -137,12 +155,23 @@ where
         self.separator
     }
 
-    pub fn elements(&'a self) -> &'a [D] {
+    pub fn elements(&self) -> &[D] {
         self.elements
+    }
+
+    pub fn with_map<M>(self, map: M) -> FmtListSlice<'a, S, D, M>
+    where
+        M: Fn(&D, &mut std::fmt::Formatter<'_>) -> std::fmt::Result,
+    {
+        FmtListSlice {
+            separator: self.separator,
+            elements: self.elements,
+            map,
+        }
     }
 }
 
-impl<'a, S, D, I> FmtIter<'a, S, D, I>
+impl<'a, S, D, I> FmtIter<'a, S, D, I, fn(&D, &mut std::fmt::Formatter<'_>) -> std::fmt::Result>
 where
     S: std::fmt::Display + ?Sized,
     D: std::fmt::Display + ?Sized,
@@ -152,6 +181,18 @@ where
         Self {
             separator,
             elements,
+            map: default_map
+        }
+    }
+
+    pub fn with_map<M>(self, map: M) -> FmtIter<'a, S, D, I, M>
+    where
+        M: Fn(&D, &mut std::fmt::Formatter<'_>) -> std::fmt::Result,
+    {
+        FmtIter {
+            separator: self.separator,
+            elements: self.elements,
+            map,
         }
     }
 }
@@ -184,11 +225,12 @@ where
     }
 }
 
-impl<'a, S, D, I> std::fmt::Display for FmtIter<'a, S, D, I>
+impl<'a, S, D, I, M> std::fmt::Display for FmtIter<'a, S, D, I, M>
 where
     S: std::fmt::Display + ?Sized,
     D: std::fmt::Display + ?Sized,
     I: IntoIterator<Item = &'a D> + Clone,
+    M: Fn(&D, &mut std::fmt::Formatter<'_>) -> std::fmt::Result,
 {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut iter = self.elements.clone().into_iter();
@@ -215,6 +257,7 @@ where
         Self {
             separator: separator.into(),
             elements: v.into_iter().map(|i| i.into()).collect(),
+            map: |s, f| write!(f, "{s}"),
         }
     }
 }
@@ -228,6 +271,7 @@ where
         Self {
             separator,
             elements,
+            map: default_map,
         }
     }
 }
@@ -268,4 +312,8 @@ where
         let iter = iter.into_iter().map(|s| s.into());
         self.elements.extend(iter);
     }
+}
+
+fn default_map<S: std::fmt::Display + ?Sized>(s: &S, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    write!(f, "{s}")
 }
