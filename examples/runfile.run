@@ -1,7 +1,7 @@
 /// The default command gets executed when the runfile is called without arguments
 cmd default() {
   # 'doc' is a special variable that contains the whole documentation of the runfile
-  echo -n "$doc";
+  echo -ne "$doc";
 }
 
 // You can declare constants and use them in any command
@@ -25,7 +25,7 @@ cmd constants() {
 // Define an argument for a command by writing its name between the parentheses
 // Use it in the command with the syntax: '$argument'
 /// Shell command
-sh cmd shell (name) {
+sh cmd shell(name) {
   # Variable interpolation is done in all languages with $argument
   echo Hello $name from the Shell!
 }
