@@ -1,35 +1,38 @@
 # TODO
 
 ## Features
-- [x] Constants
-- [] Optional arguments
+- [] Optional/default arguments
 - [] Command alias
 - [] --run <LANG\> option, runs stdin as that language
 - [] Run commands from languages 
-  - [] Shell/Bash (use --run option to call self and pipe )
+  - [] Shell/Bash (use --run option to call self and pipe)
+- [] Include external file
+- [x] Constants
 - [x] NixOS support via flakes/nix-shell
 - [x] Add language of command and if it's installed
     - [x] If not installed, print a warning and link to Install page
 
+
 ## Basic Language Implementation
+- [] Nushell
+- [] Fish
+- [] Typescript
+- [] Java
 - [x] Python
 - [x] Javascript
 - [x] Bash
 - [x] Shell
 - [x] Rust
-- [] Nushell
-- [] Fish
-- [] Typescript
 - [x] C
 - [x] C++
 - [x] C#
-- [] Java
 
 ## Advanced Language Features
 - [] Python
     - [] Pip dependencies
 - [] Rust
     - [] Cargo dependencies
+    - [] Include external file
 - [] Javascript
     - [] Npm dependencies
 - [] C#

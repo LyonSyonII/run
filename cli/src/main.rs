@@ -13,7 +13,7 @@ mod error;
 mod fmt;
 mod lang;
 mod nix;
-mod parsing;
+mod parser;
 mod runfile;
 mod utils;
 
@@ -51,7 +51,7 @@ fn main() -> std::io::Result<()> {
             .unwrap_or(dot)
     };
 
-    let runfile = match parsing::parser::runfile(&input, path) {
+    let runfile = match parser::runfile(&input, path) {
         Ok(r) => match r {
             Ok(r) => r,
             Err(errors) => {
