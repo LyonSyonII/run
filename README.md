@@ -48,7 +48,7 @@ There's a VSCode extension that provides syntax highlighting for `runfile` scrip
 
 It's experimental, so you'll need to install it manually.
 
-[Download the latest `.vsix`](https://raw.githubusercontent.com/LyonSyonII/run/main/extension/runfile-0.0.1.vsix?token=GHSAT0AAAAAACM7TI7UITOPPOEAUENEGCCMZN5QKYA) and run `code --install-extension runfile-0.0.1.vsix` to install it.
+[Download the latest `.vsix`](https://github.com/LyonSyonII/run/raw/refs/heads/main/extension/runfile-0.0.1.vsix) and run `code --install-extension runfile-0.0.1.vsix` to install it.
 
 ## Usage
 > `runfile` is to `run` what `makefile` is to `make`
